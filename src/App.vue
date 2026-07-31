@@ -34,7 +34,7 @@
       <template v-else-if="detailData">
         <!-- 流程图 -->
         <div v-if="detailData.graphData" style="height:380px;margin-bottom:18px;border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
-          <FlowViewer :graphData="detailData.graphData" :highLight="detailData.highLight" />
+          <FlowViewer :graphData="detailData.graphData" :highLight="detailHighLight" />
         </div>
         <!-- 基本信息 -->
         <div style="display:flex;gap:24px;font-size:13px;color:#666;margin-bottom:16px">
@@ -77,7 +77,7 @@ import { ref, reactive, provide, computed, onMounted, onBeforeUnmount } from 'vu
 import Dashboard from './views/Dashboard.vue'
 import DingDrawer from './components/DingDrawer.vue'
 import FlowViewer from './components/FlowViewer.vue'
-import { fetchInstanceDetail, fetchDefineDetail } from './api.js'
+import { fetchInstanceDetail, fetchApprovalRecord, fetchHighLight, fetchDefineDetail } from './api.js'
 
 const backends = [
   { label: '🐍 Python :8100', value: 'http://localhost:8100' },
@@ -123,6 +123,7 @@ const detailTitle = ref('')
 const detailLoading = ref(false)
 const detailData = ref(null)
 const detailRecords = ref([])
+const detailHighLight = ref(null)
 
 async function openDetail(id) {
   detailVisible.value = true
@@ -130,12 +131,19 @@ async function openDetail(id) {
   detailLoading.value = true
   detailData.value = null
   detailRecords.value = []
+  detailHighLight.value = null
   try {
-    const d = await fetchInstanceDetail(id)
+    // boot2 独立端点：详情 + 审批记录 + 高亮
+    const [d, records, hl] = await Promise.all([
+      fetchInstanceDetail(id),
+      fetchApprovalRecord(id),
+      fetchHighLight(id),
+    ])
     detailData.value = d
-    detailRecords.value = d?.approvalRecords || []
-    if (d?.defineName) {
-      detailTitle.value = d.defineName + ' · ' + stateLabel(d.state)
+    detailRecords.value = records
+    detailHighLight.value = hl
+    if (d?.displayName) {
+      detailTitle.value = d.displayName + ' · ' + stateLabel(d.state)
     }
   } catch (e) {
     console.error(e)

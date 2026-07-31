@@ -41,6 +41,7 @@
               <div style="display:flex;gap:6px">
                 <button class="btn btn-primary btn-sm" @click="doApprove(t.id)">同意</button>
                 <button class="btn btn-danger btn-sm" @click="doReject(t.id)">拒绝</button>
+                <button class="btn btn-ghost btn-sm" @click="doRollback(t.id)">退回</button>
               </div>
             </td>
           </tr>
@@ -109,15 +110,11 @@ async function loadAll() {
 async function doStart() {
   if (!startDefId.value) return showToast('请选择流程定义', 'error')
   try {
-    const r = await startFlow(startDefId.value, currentUser.value, startAmount.value || undefined)
-    if (r.code === 200) {
-      showToast('发起成功', 'success')
-      startDefId.value = 0
-      startAmount.value = ''
-      await loadAll()
-    } else {
-      showToast(r.message || '发起失败', 'error')
-    }
+    await startFlow(startDefId.value, currentUser.value, startAmount.value || undefined)
+    showToast('发起成功', 'success')
+    startDefId.value = 0
+    startAmount.value = ''
+    await loadAll()
   } catch (e) { showToast('发起失败: ' + e.message, 'error') }
 }
 
@@ -130,17 +127,25 @@ async function doPreview() {
 
 async function doApprove(taskId) {
   try {
-    const r = await executeTask(taskId, currentUser.value, 1)  // 1=AGREE
-    if (r.code === 200) { showToast('处理成功', 'success'); await loadAll() }
-    else showToast(r.message || '失败', 'error')
+    await executeTask(taskId, currentUser.value, 1)  // 1=AGREE
+    showToast('处理成功', 'success')
+    await loadAll()
   } catch (e) { showToast('失败: ' + e.message, 'error') }
 }
 
 async function doReject(taskId) {
   try {
-    const r = await executeTask(taskId, currentUser.value, 2)  // 2=REJECT
-    if (r.code === 200) { showToast('已驳回', 'success'); await loadAll() }
-    else showToast(r.message || '失败', 'error')
+    await executeTask(taskId, currentUser.value, 2)  // 2=REJECT → 流程结束（实例 45）
+    showToast('已驳回', 'success')
+    await loadAll()
+  } catch (e) { showToast('失败: ' + e.message, 'error') }
+}
+
+async function doRollback(taskId) {
+  try {
+    await executeTask(taskId, currentUser.value, 6)  // 6=ROLLBACK_TO_OPERATOR → 退回发起人
+    showToast('已退回发起人', 'success')
+    await loadAll()
   } catch (e) { showToast('失败: ' + e.message, 'error') }
 }
 
