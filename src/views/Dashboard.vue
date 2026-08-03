@@ -35,8 +35,8 @@
           <tr v-for="t in todos" :key="t.id">
             <td>{{ t.defineName }}</td>
             <td><strong>{{ t.displayName }}</strong></td>
-            <td style="color:#888;font-size:12px">{{ t.formKey || '-' }}</td>
-            <td style="font-size:12px;color:#888">{{ fmtTime(t.createTime) }}</td>
+            <td style="color:#666;font-size:13px">{{ t.formKey || '-' }}</td>
+            <td style="font-size:13px;color:#666">{{ fmtTime(t.createTime) }}</td>
             <td>
               <div style="display:flex;gap:6px">
                 <button class="btn btn-primary btn-sm" @click="doApprove(t.id)">同意</button>
@@ -47,7 +47,7 @@
           </tr>
         </tbody>
       </table>
-      <div v-else style="color:#aaa;text-align:center;padding:20px">暂无待办</div>
+      <div v-else style="color:#888;text-align:center;padding:20px">暂无待办</div>
     </div>
 
     <!-- My Instances -->
@@ -57,15 +57,15 @@
         <thead><tr><th>ID</th><th>流程</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="i in instances" :key="i.id">
-            <td style="font-size:11px;color:#aaa">{{ i.id }}</td>
+            <td style="font-size:13px;color:#666">{{ i.id }}</td>
             <td>{{ i.defineName }}</td>
             <td><span :class="['badge', stateBadge(i.state)]">{{ stateLabel(i.state) }}</span></td>
-            <td style="font-size:12px;color:#888">{{ fmtTime(i.createTime) }}</td>
+            <td style="font-size:13px;color:#666">{{ fmtTime(i.createTime) }}</td>
             <td><button class="btn btn-ghost btn-sm" @click="openDetail(i.id)">详情 →</button></td>
           </tr>
         </tbody>
       </table>
-      <div v-else style="color:#aaa;text-align:center;padding:20px">暂无记录</div>
+      <div v-else style="color:#888;text-align:center;padding:20px">暂无记录</div>
     </div>
   </div>
 </template>

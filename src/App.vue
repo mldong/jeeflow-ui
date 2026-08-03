@@ -37,7 +37,7 @@
           <FlowViewer :graphData="detailData.graphData" :highLight="detailHighLight" />
         </div>
         <!-- 基本信息 -->
-        <div style="display:flex;gap:24px;font-size:13px;color:#666;margin-bottom:16px">
+        <div style="display:flex;gap:24px;font-size:14px;color:#555;margin-bottom:16px">
           <div>发起人: <strong style="color:#333">{{ detailData.operator }}</strong></div>
           <div>流水号: <strong style="color:#333">{{ detailData.businessNo || '-' }}</strong></div>
           <div>时间: <strong style="color:#333">{{ fmtTime(detailData.createTime) }}</strong></div>
@@ -51,11 +51,11 @@
               <td><strong>{{ r.displayName }}</strong></td>
               <td>{{ r.operator || '-' }}</td>
               <td><span :class="['badge', taskStateBadge(r.taskState)]">{{ taskStateLabel(r.taskState) }}</span></td>
-              <td style="font-size:12px;color:#888">{{ fmtTime(r.createTime) }}</td>
+              <td style="font-size:13px;color:#666">{{ fmtTime(r.createTime) }}</td>
             </tr>
           </tbody>
         </table>
-        <div v-else style="color:#aaa;text-align:center;padding:16px">暂无审批记录</div>
+        <div v-else style="color:#888;text-align:center;padding:16px">暂无审批记录</div>
       </template>
       <div v-else class="loading-text">实例不存在</div>
     </DingDrawer>
@@ -224,7 +224,7 @@ function fmtTime(t) {
 .backend-select-wrap { position: relative; }
 .backend-select {
   padding: 6px 12px; border-radius: 6px; border: 1px solid #555;
-  background: #16213e; color: #ddd; font-size: 12px; cursor: pointer;
+  background: #16213e; color: #eee; font-size: 13px; cursor: pointer;
   display: flex; align-items: center; gap: 6px; min-width: 140px; justify-content: space-between;
 }
 .backend-select:hover { border-color: #1677ff; color: #fff; }
@@ -235,16 +235,16 @@ function fmtTime(t) {
   box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 1000; overflow: hidden;
 }
 .backend-option {
-  padding: 8px 14px; font-size: 12px; color: #ccc; cursor: pointer;
+  padding: 8px 14px; font-size: 13px; color: #ccc; cursor: pointer;
   white-space: nowrap; transition: all .15s;
 }
 .backend-option:hover { background: #16213e; color: #fff; }
 .backend-option.active { background: #1677ff; color: #fff; }
-.user-badge { font-size: 13px; color: #aaa; }
+.user-badge { font-size: 14px; color: #ccc; }
 
 .mini-table { width: 100%; border-collapse: collapse; }
-.mini-table th, .mini-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-.mini-table th { background: #fafafa; font-weight: 600; color: #555; }
+.mini-table th, .mini-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e8e8e8; font-size: 14px; }
+.mini-table th { background: #fafafa; font-weight: 600; color: #444; }
 
-.loading-text { text-align: center; padding: 40px; color: #999; }
+.loading-text { text-align: center; padding: 40px; color: #888; }
 </style>
