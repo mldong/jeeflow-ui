@@ -42,7 +42,8 @@
       <div v-if="detailLoading" class="loading-text">加载中...</div>
       <template v-else-if="detailData">
         <!-- 流程图 -->
-        <div v-if="detailData.graphData" style="height:380px;margin-bottom:18px;border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
+        <!-- issues/13：钉钉模式纵向布局，详情流程图容器加高到与预览一致（380→520px），避免底部节点截断 -->
+        <div v-if="detailData.graphData" style="height:520px;margin-bottom:18px;border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
           <FlowViewer :graphData="detailData.graphData" :highLight="detailHighLight" />
         </div>
         <!-- 基本信息 -->
