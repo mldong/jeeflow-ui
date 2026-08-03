@@ -71,7 +71,8 @@ export async function fetchHighLight(instanceId) {
 
 // ── Process Task ─────────────────────────────────────────────────────────────────
 export async function fetchTodoList(userId = 'user1') {
-  const r = await post('/wf/processTask/todoList', { pageNum: 1, pageSize: 50, userId })
+  // 门面契约统一 operator（issues/09：前端适配标准契约，不再依赖 demo 层归一化）
+  const r = await post('/wf/processTask/todoList', { pageNum: 1, pageSize: 50, operator: userId })
   return (r.data?.rows || []).map(t => ({
     id: t.id, taskName: t.taskName, displayName: t.displayName,
     taskState: t.taskState, formKey: t.formKey, createTime: t.createTime,
