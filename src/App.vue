@@ -21,9 +21,14 @@
             </div>
           </div>
         </div>
-        <span class="user-badge">👤 {{ currentUser }}</span>
+        <div class="header-actions">
+          <button class="btn btn-ghost btn-sm" style="color:#ddd;border-color:#555" @click="resetData" title="一键清空演示数据（调用 demo /api/reset）">🧹 重置数据</button>
+          <button class="btn btn-demo btn-sm" :class="{ active: demoMode }" @click="demoMode = !demoMode" title="演示模式：步骤提示 + 全局字号放大，专供录屏">🎬 演示模式</button>
+          <span class="user-badge">👤 {{ currentUser }}</span>
+        </div>
       </div>
     </header>
+    <div v-if="demoMode && demoStep" class="demo-step">{{ demoStep }}</div>
     <main>
       <Dashboard />
     </main>
@@ -68,16 +73,18 @@
       <div v-else class="loading-text">暂无可预览的流程图</div>
     </DingDrawer>
 
-    <div v-if="toast.msg" :class="['toast', toast.type, 'show']">{{ toast.msg }}</div>
+    <div v-if="toast.msg" :class="['toast', toast.type, 'show', { big: toast.big }]">
+      <span class="toast-icon">{{ toast.icon }}</span>{{ toast.msg }}
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, provide, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, provide, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import Dashboard from './views/Dashboard.vue'
 import DingDrawer from './components/DingDrawer.vue'
 import FlowViewer from './components/FlowViewer.vue'
-import { fetchInstanceDetail, fetchApprovalRecord, fetchHighLight, fetchDefineDetail } from './api.js'
+import { fetchInstanceDetail, fetchApprovalRecord, fetchHighLight, fetchDefineDetail, fetchReset } from './api.js'
 
 const backends = [
   { label: '🐍 Python :8100', value: 'http://localhost:8100' },
@@ -108,8 +115,39 @@ function switchBackend(url) {
 const currentUser = ref(localStorage.getItem('jeeflow_user') || 'user1')
 provide('currentUser', currentUser)
 
-const toast = reactive({ msg: '', type: 'success' })
+const toast = reactive({ msg: '', type: 'success', big: false, icon: '' })
+let toastTimer = null
+function showToast(msg, type = 'success', big = false) {
+  toast.msg = msg
+  toast.type = type
+  toast.big = big
+  toast.icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => toast.msg = '', 3500)
+}
 provide('toast', toast)
+provide('showToast', showToast)
+
+// 演示模式（issues/11）：步骤提示条 + body.demo-mode 全局字号放大
+const demoMode = ref(false)
+const demoStep = ref('')
+provide('demoMode', demoMode)
+provide('demoStep', demoStep)
+watch(demoMode, v => {
+  document.body.classList.toggle('demo-mode', v)
+  if (!v) demoStep.value = ''
+})
+
+async function resetData() {
+  if (!window.confirm('确认重置演示数据？（清空实例/任务，重载种子流程）')) return
+  try {
+    await fetchReset()
+    showToast('数据已重置，回到种子状态', 'success', true)
+    setTimeout(() => location.reload(), 800)
+  } catch (e) {
+    showToast('重置失败（当前后端未提供 /api/reset）: ' + e.message, 'error')
+  }
+}
 
 function goHome() {
   detailVisible.value = false

@@ -21,6 +21,11 @@ export async function fetchStats(userId = 'user1') {
   return check(await r.json()).data || {}
 }
 
+// ── Demo 辅助（issues/11）─────────────────────────────────────────────────────────
+export async function fetchReset() {
+  return post('/api/reset', {})
+}
+
 // ── Process Define ───────────────────────────────────────────────────────────────
 export async function fetchDefines() {
   const r = await post('/wf/processDefine/page', { pageNum: 1, pageSize: 50 })

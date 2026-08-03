@@ -18,6 +18,7 @@
         <input v-model="startAmount" placeholder="金额（可选）" style="width:100px" type="number" />
         <button class="btn btn-ghost btn-sm" @click="doPreview" :disabled="!startDefId" title="预览流程图">👁 预览</button>
         <button class="btn btn-primary" @click="doStart">发起</button>
+        <button class="btn btn-demo" @click="runDemo" :disabled="demoRunning" title="一键演示完整闭环：发起→组长同意→经理退回→发起人收到">🎬 演示闭环</button>
       </div>
     </div>
 
@@ -29,10 +30,10 @@
           <button v-for="u in quickUsers" :key="u" :class="['user-tab', { active: currentUser === u }]" @click="switchUser(u)">{{ userLabels[u] || u }}</button>
         </span>
       </h2>
-      <table v-if="todos.length">
+      <table v-if="todos.length" :key="'todo-' + listVersion" class="fade-in">
         <thead><tr><th>流程</th><th>任务</th><th>表单</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>
-          <tr v-for="t in todos" :key="t.id">
+          <tr v-for="t in todos" :key="t.id" :class="{ 'row-flash': highlightTaskId === t.id }">
             <td>{{ t.defineName }}</td>
             <td><strong>{{ t.displayName }}</strong></td>
             <td style="color:#666;font-size:13px">{{ t.formKey || '-' }}</td>
@@ -53,7 +54,7 @@
     <!-- My Instances -->
     <div class="card">
       <h2>📝 我发起的流程</h2>
-      <table v-if="instances.length">
+      <table v-if="instances.length" :key="'inst-' + listVersion" class="fade-in">
         <thead><tr><th>ID</th><th>流程</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="i in instances" :key="i.id">
@@ -76,6 +77,9 @@ import { fetchStats, fetchDefines, fetchTodoList, fetchInstances, startFlow, exe
 
 const currentUser = inject('currentUser')
 const toast = inject('toast')
+const showToast = inject('showToast')
+const demoMode = inject('demoMode')
+const demoStep = inject('demoStep')
 const openDetail = inject('openDetail')
 const openPreview = inject('openPreview')
 
@@ -86,6 +90,11 @@ const instances = ref([])
 
 const startDefId = ref(0)
 const startAmount = ref('')
+
+// issues/11：操作行高亮 + 列表刷新淡入
+const highlightTaskId = ref(null)
+const listVersion = ref(0)
+let demoRunning = false
 
 const quickUsers = ['user1', 'leader', 'manager', 'boss', 'director', 'userA', 'userB', 'userC']
 const userLabels = { leader: '组长', manager: '经理', boss: '老板', director: '总监' }
@@ -102,6 +111,7 @@ async function loadAll() {
     defines.value = d
     todos.value = t
     instances.value = i
+    listVersion.value++
   } catch (e) {
     showToast('加载失败，后端是否启动？', 'error')
   }
@@ -126,27 +136,74 @@ async function doPreview() {
 }
 
 async function doApprove(taskId) {
-  try {
-    await executeTask(taskId, currentUser.value, 1)  // 1=AGREE
-    showToast('处理成功', 'success')
-    await loadAll()
-  } catch (e) { showToast('失败: ' + e.message, 'error') }
+  await handleTask(taskId, 1, '处理成功')  // 1=AGREE
 }
 
 async function doReject(taskId) {
-  try {
-    await executeTask(taskId, currentUser.value, 2)  // 2=REJECT → 流程结束（实例 45）
-    showToast('已驳回', 'success')
-    await loadAll()
-  } catch (e) { showToast('失败: ' + e.message, 'error') }
+  await handleTask(taskId, 2, '已驳回')  // 2=REJECT → 流程结束（实例 45）
 }
 
 async function doRollback(taskId) {
+  await handleTask(taskId, 6, '已退回发起人')  // 6=ROLLBACK_TO_OPERATOR → 退回发起人
+}
+
+// issues/11：操作行高亮 0.9s 后再刷新（观众看得清处理了哪条）
+async function handleTask(taskId, submitType, okMsg) {
+  highlightTaskId.value = taskId
   try {
-    await executeTask(taskId, currentUser.value, 6)  // 6=ROLLBACK_TO_OPERATOR → 退回发起人
-    showToast('已退回发起人', 'success')
+    await executeTask(taskId, currentUser.value, submitType)
+    showToast(okMsg, 'success')
+    await new Promise(r => setTimeout(r, 900))
     await loadAll()
   } catch (e) { showToast('失败: ' + e.message, 'error') }
+  finally { highlightTaskId.value = null }
+}
+
+// issues/11：🎬 演示闭环——按剧本逐步执行并提示（多级审批：发起→组长同意→经理退回→发起人收到）
+async function runDemo() {
+  if (demoRunning) return
+  const def = defines.value.find(d => d.name === '02-multi-task' || (d.displayName || '').includes('多级'))
+  if (!def) { showToast('未找到多级审批流程（02-multi-task）', 'error'); return }
+  demoRunning = true
+  demoMode.value = true
+  const sleep = ms => new Promise(r => setTimeout(r, ms))
+  try {
+    // ① 发起（金额 500）
+    demoStep.value = '① user1 发起「多级审批」流程（金额 500）'
+    showToast('① 发起：多级审批（金额 500）', 'success', true)
+    await startFlow(def.id, 'user1', 500)
+    await loadAll()
+    await sleep(1800)
+
+    // ② 组长同意 → 流转经理
+    switchUser('leader')
+    await sleep(700)
+    await loadAll()
+    demoStep.value = '② 组长同意，流程流转到经理'
+    showToast('② 组长同意 → 流转经理', 'success', true)
+    const t1 = todos.value[0]
+    if (t1) { await executeTask(t1.id, 'leader', 1); await sleep(900); await loadAll() }
+    await sleep(1800)
+
+    // ③ 经理退回发起人
+    switchUser('manager')
+    await sleep(700)
+    await loadAll()
+    demoStep.value = '③ 经理退回，流程回到发起人'
+    showToast('③ 经理退回 → 回到发起人', 'success', true)
+    const t2 = todos.value[0]
+    if (t2) { await executeTask(t2.id, 'manager', 6); await sleep(900); await loadAll() }
+    await sleep(1800)
+
+    // ④ 发起人收到退回待办
+    switchUser('user1')
+    await sleep(700)
+    await loadAll()
+    demoStep.value = '④ 发起人收到退回待办，可重新提交'
+    showToast('④ 发起人收到退回待办', 'success', true)
+  } finally {
+    demoRunning = false
+  }
 }
 
 function switchUser(u) {
@@ -173,12 +230,6 @@ function fmtTime(t) {
   const d = new Date(t)
   if (isNaN(d.getTime())) return t
   return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-
-function showToast(msg, type) {
-  toast.msg = msg
-  toast.type = type
-  setTimeout(() => toast.msg = '', 2500)
 }
 
 onMounted(loadAll)

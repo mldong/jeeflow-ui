@@ -60,3 +60,40 @@ input:focus, select:focus { border-color: #1677ff; outline: none; box-shadow: 0 
 .user-tab:not(:first-child) { margin-left: -1px; }
 .user-tab:hover { color: #1677ff; background: #e6f4ff; }
 .user-tab.active { background: #1677ff; color: #fff; border-color: #1677ff; z-index: 1; position: relative; }
+
+/* ── 演示辅助（issues/11）── */
+
+/* 操作行高亮：被处理行橙色闪烁 0.9s */
+@keyframes rowFlash {
+  0% { background: #fff7e6; }
+  50% { background: #ffe7ba; }
+  100% { background: #fff; }
+}
+.row-flash { animation: rowFlash .9s ease; }
+
+/* 列表刷新淡入 */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadeIn .18s ease; }
+
+/* 演示模式：全局字号 +2px（录屏专用） */
+body.demo-mode { font-size: 18px; }
+body.demo-mode main { max-width: 1340px; }
+
+/* 顶部步骤提示条（演示模式开启时） */
+.demo-step {
+  position: sticky; top: 0; z-index: 150;
+  background: linear-gradient(90deg, #1677ff, #4096ff);
+  color: #fff; text-align: center; padding: 8px 16px;
+  font-size: 15px; font-weight: 600; letter-spacing: .5px;
+  box-shadow: 0 2px 8px rgba(22,119,255,.3);
+}
+
+/* Header 动作按钮（重置/演示模式） */
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.btn-demo { background: #fa8c16; color: #fff; }
+.btn-demo:hover { background: #ffa940; }
+.btn-demo.active { outline: 2px solid #ffd591; }
+
+/* Toast 升级：图标 + 关键操作大字号 */
+.toast .toast-icon { margin-right: 6px; font-weight: 700; }
+.toast.big { font-size: 18px; padding: 16px 34px; }
