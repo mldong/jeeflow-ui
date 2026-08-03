@@ -15,7 +15,6 @@
           <option :value="0">-- 选择流程定义 --</option>
           <option v-for="d in defines" :key="d.id" :value="d.id">{{ d.displayName }}</option>
         </select>
-        <input v-model="startAmount" placeholder="金额（可选）" style="width:100px" type="number" />
         <button class="btn btn-ghost btn-sm" @click="doPreview" :disabled="!startDefId" title="预览流程图">👁 预览</button>
         <button class="btn btn-primary" @click="doStart">发起</button>
         <button class="btn btn-demo" @click="runDemo" :disabled="demoRunning" title="一键演示完整闭环：发起→组长同意→经理退回→发起人收到">🎬 演示闭环</button>
@@ -118,7 +117,6 @@ const todos = ref([])
 const instances = ref([])
 
 const startDefId = ref(0)
-const startAmount = ref('')
 const formSchemas = inject('formSchemas')
 const startFormKey = ref('')
 const startFormFields = ref([])
@@ -177,7 +175,6 @@ async function onSelectDefine() {
       ]
       startFormFields.value = schema
       schema.forEach(f => { formValues.value[f.key] = f.type === 'select' ? (f.options?.[0] || '') : '' })
-      if (startAmount.value) formValues.value.amount = startAmount.value
     }
   } catch (e) { /* 表单加载失败不阻塞发起 */ }
 }
@@ -192,10 +189,9 @@ async function doStart() {
     if (v !== '' && v != null) extra[f.key] = f.type === 'number' ? Number(v) : v
   }
   try {
-    await startFlow(startDefId.value, currentUser.value, extra.amount !== undefined ? String(extra.amount) : (startAmount.value || undefined), extra)
+    await startFlow(startDefId.value, currentUser.value, undefined, extra)
     showToast('发起成功', 'success', true)
     startDefId.value = 0
-    startAmount.value = ''
     startFormKey.value = ''
     startFormFields.value = []
     formValues.value = {}
