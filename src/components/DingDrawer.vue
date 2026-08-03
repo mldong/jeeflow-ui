@@ -75,13 +75,13 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', handleKeydown); 
 .ding-drawer--open { transform: translateX(0); }
 .ding-drawer__header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 24px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
+  padding: 10px 16px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
 }
-.ding-drawer__title { font-size: 16px; font-weight: 600; color: #1f1f1f; }
+.ding-drawer__title { font-size: 15px; font-weight: 600; color: #1f1f1f; }
 .ding-drawer__close {
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   border: none; background: transparent; cursor: pointer; font-size: 20px; color: #999; border-radius: 6px;
 }
 .ding-drawer__close:hover { background: #f5f5f5; color: #333; }
-.ding-drawer__body { padding: 24px; overflow-y: auto; flex: 1; }
+.ding-drawer__body { padding: 16px; overflow-y: auto; flex: 1; }
 </style>

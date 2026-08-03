@@ -73,7 +73,7 @@
 
     <!-- 流程图预览抽屉 -->
     <DingDrawer :visible="previewVisible" :title="previewTitle" width="800px" @update:visible="previewVisible = $event" @close="previewVisible = false">
-      <div v-if="previewGraphData" style="height:520px">
+      <div v-if="previewGraphData" class="drawer-graph">
         <FlowViewer :graphData="previewGraphData" />
       </div>
       <div v-else class="loading-text">暂无可预览的流程图</div>
@@ -94,8 +94,8 @@
             <div class="lib-meta">{{ d.name }} · 表单：{{ formLabel(d.formKey) }}</div>
           </div>
         </div>
-        <div style="flex:1;min-width:0">
-          <div v-if="libraryGraphData" style="height:560px;border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div v-if="libraryGraphData" class="drawer-graph" style="border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
             <FlowViewer :graphData="libraryGraphData" />
           </div>
           <div v-else class="loading-text">暂无可预览的流程图</div>
@@ -380,6 +380,8 @@ function fmtTime(t) {
 
 .detail-body { display: flex; flex-direction: column; height: 100%; gap: 12px; }
 .detail-graph { flex: 1; min-height: 300px; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; }
+/* 预览/流程库：流程图铺满抽屉剩余高度 */
+.drawer-graph { flex: 1; min-height: 0; height: 100%; }
 .detail-foot { flex-shrink: 0; }
 .detail-meta { display: flex; gap: 20px; font-size: 13px; color: #666; margin-bottom: 8px; flex-wrap: wrap; }
 
