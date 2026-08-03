@@ -1,7 +1,10 @@
 <template>
   <div id="jeeflow-app">
     <header class="app-header">
-      <h1 @click="goHome" style="cursor:pointer">🧊 jeeflow</h1>
+      <div class="brand">
+        <h1 @click="goHome" style="cursor:pointer">🧊 jeeflow</h1>
+        <span class="brand-slogan">轻量工作流引擎 · 多语言联邦</span>
+      </div>
       <div class="header-right">
         <!-- 自定义下拉（原生 select 在 IAB 里弹不出菜单） -->
         <div class="backend-select-wrap">
@@ -22,6 +25,7 @@
           </div>
         </div>
         <div class="header-actions">
+          <button class="btn btn-ghost btn-sm" style="color:#ddd;border-color:#555" @click="openLibrary" title="查看全部流程定义的流程图">📐 流程库</button>
           <button class="btn btn-ghost btn-sm" style="color:#ddd;border-color:#555" @click="resetData" title="一键清空演示数据（调用 demo /api/reset）">🧹 重置数据</button>
           <button class="btn btn-demo btn-sm" :class="{ active: demoMode }" @click="demoMode = !demoMode" title="演示模式：步骤提示 + 全局字号放大，专供录屏">🎬 演示模式</button>
           <span class="user-badge">👤 {{ currentUser }}</span>
@@ -71,6 +75,31 @@
         <FlowViewer :graphData="previewGraphData" />
       </div>
       <div v-else class="loading-text">暂无可预览的流程图</div>
+    </DingDrawer>
+
+    <!-- 流程库抽屉（issues/12）：全部流程定义 + 流程图只读展示 -->
+    <DingDrawer :visible="libraryVisible" title="📐 流程库" width="1080px" @update:visible="libraryVisible = $event" @close="libraryVisible = false">
+      <div v-if="libraryDefines.length" style="display:flex;gap:16px;height:100%">
+        <div style="width:280px;flex-shrink:0;border-right:1px solid #f0f0f0;overflow:auto;padding-right:8px">
+          <div
+            v-for="d in libraryDefines"
+            :key="d.id"
+            class="lib-item"
+            :class="{ active: libraryActive === d.id }"
+            @click="selectLibrary(d)"
+          >
+            <div class="lib-name">{{ d.displayName }}</div>
+            <div class="lib-meta">{{ d.name }} · 表单：{{ formLabel(d.formKey) }}</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div v-if="libraryGraphData" style="height:560px;border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
+            <FlowViewer :graphData="libraryGraphData" />
+          </div>
+          <div v-else class="loading-text">暂无可预览的流程图</div>
+        </div>
+      </div>
+      <div v-else class="loading-text">加载中...</div>
     </DingDrawer>
 
     <div v-if="toast.msg" :class="['toast', toast.type, 'show', { big: toast.big }]">
@@ -218,6 +247,65 @@ async function openPreview(defineId, displayName) {
 provide('openDetail', openDetail)
 provide('openPreview', openPreview)
 
+// ── 流程库（issues/12）───────────────────────────────────────────────────────
+
+const libraryVisible = ref(false)
+const libraryDefines = ref([])
+const libraryActive = ref(0)
+const libraryGraphData = ref(null)
+const libraryFormKeys = ref({})
+
+async function openLibrary() {
+  libraryVisible.value = true
+  if (libraryDefines.value.length) return
+  try {
+    const r = await fetch('/wf/processDefine/page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pageNum: 1, pageSize: 50 }) })
+    const data = (await r.json())?.data?.rows || []
+    const defs = []
+    for (const d of data) {
+      const detail = await fetchDefineDetail(d.id)
+      defs.push({
+        id: d.id, name: d.name, displayName: d.displayName || d.name,
+        jsonObject: detail?.jsonObject || null,
+        formKey: firstFormKey(detail?.jsonObject),
+      })
+    }
+    libraryDefines.value = defs
+    if (defs.length) selectLibrary(defs[0])
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+function selectLibrary(d) {
+  libraryActive.value = d.id
+  libraryGraphData.value = d.jsonObject
+}
+
+// 首个任务节点的 form（apply-form/expense-form）
+function firstFormKey(graph) {
+  for (const n of graph?.nodes || []) {
+    if (n?.type === 'snaker:task' && n?.properties?.form) return n.properties.form
+  }
+  return ''
+}
+function formLabel(f) {
+  return f || '无'
+}
+
+const formSchemas = {
+  'apply-form': [
+    { key: 'reason', label: '事由', type: 'text', required: true },
+    { key: 'amount', label: '申请金额', type: 'number' },
+  ],
+  'expense-form': [
+    { key: 'reason', label: '报销事由', type: 'text', required: true },
+    { key: 'amount', label: '报销金额', type: 'number', required: true },
+    { key: 'category', label: '费用类别', type: 'select', options: ['差旅', '办公', '招待', '其他'] },
+  ],
+}
+provide('formSchemas', formSchemas)
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function stateLabel(s) {
@@ -258,6 +346,14 @@ function fmtTime(t) {
   justify-content: space-between;
 }
 .app-header h1 { font-size: 18px; font-weight: 600; margin: 0; }
+.brand { display: flex; align-items: baseline; gap: 12px; }
+.brand-slogan { font-size: 13px; color: #9aa5c0; letter-spacing: .5px; }
+.lib-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: all .15s; margin-bottom: 4px; }
+.lib-item:hover { background: #f5f7fa; }
+.lib-item.active { background: #e6f4ff; }
+.lib-item.active .lib-name { color: #1677ff; }
+.lib-name { font-size: 14px; font-weight: 600; color: #333; }
+.lib-meta { font-size: 12px; color: #888; margin-top: 2px; }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .backend-select-wrap { position: relative; }
 .backend-select {

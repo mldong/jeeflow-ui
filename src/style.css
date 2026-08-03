@@ -97,3 +97,16 @@ body.demo-mode main { max-width: 1340px; }
 /* Toast 升级：图标 + 关键操作大字号 */
 .toast .toast-icon { margin-right: 6px; font-weight: 700; }
 .toast.big { font-size: 18px; padding: 16px 34px; }
+
+/* ── 功能补齐（issues/12）── */
+
+/* Stats 联动 */
+.stat.clickable { cursor: pointer; transition: all .15s; }
+.stat.clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+
+/* 动态表单 */
+.dyn-form { margin-top: 14px; padding: 14px 16px; background: #fafafa; border: 1px dashed #d9d9d9; border-radius: 8px; }
+.dyn-form-title { font-size: 13px; color: #666; margin-bottom: 10px; }
+.dyn-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.dyn-field label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+.dyn-field .req { color: #ff4d4f; margin-left: 2px; }

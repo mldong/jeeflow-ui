@@ -40,9 +40,10 @@ export async function fetchDefineDetail(id) {
 }
 
 // ── Process Instance ─────────────────────────────────────────────────────────────
-export async function startFlow(defineId, operator, amount) {
+export async function startFlow(defineId, operator, amount, extra = {}) {
   const body = { processDefineId: defineId, operator }
   if (amount !== undefined && amount !== '') body.amount = Number(amount)
+  Object.assign(body, extra) // issues/12：动态表单字段 → 流程变量
   return post('/wf/processDefine/startAndExecute', body) // boot2 主入口
 }
 
@@ -75,6 +76,16 @@ export async function fetchHighLight(instanceId) {
 }
 
 // ── Process Task ─────────────────────────────────────────────────────────────────
+export async function fetchDoneList(userId = 'user1') {
+  const r = await post('/wf/processTask/doneList', { pageNum: 1, pageSize: 50, operator: userId })
+  return (r.data?.rows || []).map(t => ({
+    id: t.id, taskName: t.taskName, displayName: t.displayName,
+    taskState: t.taskState, formKey: t.formKey, createTime: t.createTime,
+    defineName: t.processDefineDisplayName || '',
+    processInstanceId: t.processInstanceId,
+  }))
+}
+
 export async function fetchTodoList(userId = 'user1') {
   // 门面契约统一 operator（issues/09：前端适配标准契约，不再依赖 demo 层归一化）
   const r = await post('/wf/processTask/todoList', { pageNum: 1, pageSize: 50, operator: userId })
