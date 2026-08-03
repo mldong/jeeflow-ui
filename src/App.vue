@@ -41,31 +41,32 @@
     <DingDrawer :visible="detailVisible" :title="detailTitle" width="900px" @update:visible="detailVisible = $event" @close="detailVisible = false">
       <div v-if="detailLoading" class="loading-text">加载中...</div>
       <template v-else-if="detailData">
-        <!-- 流程图 -->
-        <!-- issues/13：钉钉模式纵向布局，详情流程图容器加高到与预览一致（380→520px），避免底部节点截断 -->
-        <div v-if="detailData.graphData" style="height:520px;margin-bottom:18px;border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
-          <FlowViewer :graphData="detailData.graphData" :highLight="detailHighLight" />
+        <!-- issues/13：流程图弹性铺满抽屉，审批记录压缩到底部（mini 紧凑） -->
+        <div class="detail-body">
+          <div v-if="detailData.graphData" class="detail-graph">
+            <FlowViewer :graphData="detailData.graphData" :highLight="detailHighLight" />
+          </div>
+          <div v-else class="loading-text" style="padding:24px">暂无流程图</div>
+          <div class="detail-foot">
+            <div class="detail-meta">
+              <span>发起人: <strong>{{ detailData.operator }}</strong></span>
+              <span>流水号: <strong>{{ detailData.businessNo || '-' }}</strong></span>
+              <span>时间: <strong>{{ fmtTime(detailData.createTime) }}</strong></span>
+            </div>
+            <table v-if="detailRecords.length" class="mini-table">
+              <thead><tr><th>节点</th><th>处理人</th><th>状态</th><th>时间</th></tr></thead>
+              <tbody>
+                <tr v-for="r in detailRecords" :key="r.id">
+                  <td><strong>{{ r.displayName }}</strong></td>
+                  <td>{{ r.operator || '-' }}</td>
+                  <td><span :class="['badge', taskStateBadge(r.taskState)]">{{ taskStateLabel(r.taskState) }}</span></td>
+                  <td style="font-size:12px;color:#888">{{ fmtTime(r.createTime) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-else style="color:#888;text-align:center;padding:8px">暂无审批记录</div>
+          </div>
         </div>
-        <!-- 基本信息 -->
-        <div style="display:flex;gap:24px;font-size:14px;color:#555;margin-bottom:16px">
-          <div>发起人: <strong style="color:#333">{{ detailData.operator }}</strong></div>
-          <div>流水号: <strong style="color:#333">{{ detailData.businessNo || '-' }}</strong></div>
-          <div>时间: <strong style="color:#333">{{ fmtTime(detailData.createTime) }}</strong></div>
-        </div>
-        <!-- 审批记录 -->
-        <h3 style="font-size:14px;margin-bottom:8px">审批记录</h3>
-        <table v-if="detailRecords.length" class="mini-table">
-          <thead><tr><th>节点</th><th>处理人</th><th>状态</th><th>时间</th></tr></thead>
-          <tbody>
-            <tr v-for="r in detailRecords" :key="r.id">
-              <td><strong>{{ r.displayName }}</strong></td>
-              <td>{{ r.operator || '-' }}</td>
-              <td><span :class="['badge', taskStateBadge(r.taskState)]">{{ taskStateLabel(r.taskState) }}</span></td>
-              <td style="font-size:13px;color:#666">{{ fmtTime(r.createTime) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-else style="color:#888;text-align:center;padding:16px">暂无审批记录</div>
       </template>
       <div v-else class="loading-text">实例不存在</div>
     </DingDrawer>
@@ -377,9 +378,15 @@ function fmtTime(t) {
 .backend-option.active { background: #1677ff; color: #fff; }
 .user-badge { font-size: 14px; color: #ccc; }
 
+.detail-body { display: flex; flex-direction: column; height: 100%; gap: 12px; }
+.detail-graph { flex: 1; min-height: 300px; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; }
+.detail-foot { flex-shrink: 0; }
+.detail-meta { display: flex; gap: 20px; font-size: 13px; color: #666; margin-bottom: 8px; flex-wrap: wrap; }
+
+/* mini 表格（底部审批记录，紧凑） */
 .mini-table { width: 100%; border-collapse: collapse; }
-.mini-table th, .mini-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e8e8e8; font-size: 14px; }
-.mini-table th { background: #fafafa; font-weight: 600; color: #444; }
+.mini-table th, .mini-table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.mini-table th { background: #fafafa; font-weight: 600; color: #555; }
 
 .loading-text { text-align: center; padding: 40px; color: #888; }
 </style>
