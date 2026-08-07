@@ -69,8 +69,12 @@ export const SchemaForm = defineComponent({
       emit('update:modelValue', { ...form.value })
     }
     return () => {
+      // 字段集：labels 键 ∪ 已填值的 modelValue 键（空值 f_ 字段也渲染）
       const labels = props.fieldLabels
-      const keys = Object.keys(labels).length ? Object.keys(labels) : Object.keys(props.modelValue)
+      const keys = Array.from(new Set([
+        ...Object.keys(labels),
+        ...Object.keys(props.modelValue).filter((k) => props.modelValue[k] !== '' && props.modelValue[k] != null),
+      ]))
       return h('div', { class: 'jf-schema-form' },
         keys.map((k) => {
           const label = labels[k] ?? k.replace(/^f_/, '')
