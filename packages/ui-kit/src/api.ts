@@ -90,10 +90,16 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<{ processInstanceId: string }>('processDefine/startAndExecute', {
           processDefineId: defineId, ...formData,
         }),
+      /** 发布流程定义：流程 JSON 顶层展开（对齐 vben5；字符串 content 兼容） */
       deploy: (content: string | object) =>
-        flow<{ processDefineId: string }>('processDefine/deploy', { content }),
+        flow<{ processDefineId: string }>('processDefine/deploy',
+          typeof content === 'string' ? { content } : { ...content }),
+      /** 重新发布：流程 JSON 顶层展开（对齐 vben5；字符串 content 兼容） */
       redeploy: (defineId: string, content: string | object) =>
-        flow<void>('processDefine/redeploy', { processDefineId: defineId, content }),
+        flow<void>('processDefine/redeploy',
+          typeof content === 'string'
+            ? { processDefineId: defineId, content }
+            : { processDefineId: defineId, ...content }),
       remove: (ids: string | string[]) =>
         flow<void>('processDefine/remove', Array.isArray(ids) ? { ids } : { id: ids }),
       upAndDown: (ids: string | string[], state: number) =>
@@ -165,8 +171,12 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<{ id: string }>('processDesign/save', design),
       update: (id: string, fields: Record<string, unknown>) =>
         flow<void>('processDesign/update', { id, ...fields }),
-      updateDefine: (processDesignId: string, content: string | object) =>
-        flow<void>('processDesign/updateDefine', { processDesignId, content }),
+      /** 保存设计稿：流程 JSON 顶层展开（对齐 vben5 契约；字符串 content 兼容） */
+      updateDefine: (processDesignId: string, json: string | object) =>
+        flow<void>('processDesign/updateDefine',
+          typeof json === 'string'
+            ? { processDesignId, content: json }
+            : { processDesignId, ...json }),
       remove: (ids: string | string[]) =>
         flow<void>('processDesign/remove', Array.isArray(ids) ? { ids } : { id: ids }),
       deploy: (id: string) =>
