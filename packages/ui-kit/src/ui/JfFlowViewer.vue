@@ -30,10 +30,11 @@ defineOptions({ name: 'JfFlowViewer' })
 const props = withDefaults(defineProps<{
   graphData?: FlowGraph | Record<string, any> | null
   highLight?: HighLightData | Record<string, any> | null
+  /** 容器高度（默认铺满父容器） */
   height?: string
   /** 主题色覆盖（默认蓝） */
   primaryColor?: string
-}>(), { primaryColor: '#1677ff' })
+}>(), { height: '100%', primaryColor: '#1677ff' })
 
 const ready = ref(false)
 const localGraphData = computed(() => props.graphData)
@@ -58,7 +59,6 @@ onMounted(() => {
 .jf-flow-viewer {
   width: 100%;
   height: v-bind(height);
-  min-height: 350px;
   position: relative;
 }
 .jf-viewer-loading, .jf-viewer-empty {

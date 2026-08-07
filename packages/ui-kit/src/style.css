@@ -60,7 +60,8 @@
 }
 
 /* 详情 */
-.jf-detail-graph { border: 1px solid var(--jf-border, #f0f0f0); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+.jf-detail-body { display: flex; flex-direction: column; height: 100%; gap: 12px; }
+.jf-detail-graph { flex: 1; min-height: 300px; border: 1px solid var(--jf-border, #f0f0f0); border-radius: 8px; overflow: hidden; }
 .jf-detail-meta { display: flex; gap: 20px; font-size: 13px; color: #666; margin: 12px 0; flex-wrap: wrap; }
 .jf-detail-actions { display: flex; gap: 8px; margin-bottom: 14px; }
 .jf-section-title { font-size: 14px; font-weight: 600; color: #555; margin: 16px 0 8px; }

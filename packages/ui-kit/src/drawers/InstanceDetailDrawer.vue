@@ -1,10 +1,10 @@
 <template>
   <JfDrawer :visible="visible" :title="title" :width="width" @update:visible="emit('update:visible', $event)">
     <div v-if="loading" class="jf-loading">加载中...</div>
-    <template v-else-if="data">
-      <!-- 流程图 + 高亮 -->
+    <div v-else-if="data" class="jf-detail-body">
+      <!-- 流程图：弹性铺满剩余空间，审批记录压缩到底部 -->
       <div v-if="data.jsonObject" class="jf-detail-graph">
-        <JfFlowViewer :graph-data="data.jsonObject" :high-light="highLight" height="360px" />
+        <JfFlowViewer :graph-data="data.jsonObject" :high-light="highLight" />
       </div>
       <div v-else class="jf-empty">暂无流程图</div>
 
@@ -49,7 +49,7 @@
         </tbody>
       </table>
       <div v-else class="jf-empty">暂无审批记录</div>
-    </template>
+    </div>
     <div v-else class="jf-empty">实例不存在</div>
 
     <!-- 手动抄送弹窗 -->
