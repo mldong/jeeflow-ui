@@ -83,7 +83,9 @@
 .jf-list-item:hover { border-color: var(--jf-primary, #1677ff); color: var(--jf-primary, #1677ff); }
 
 /* 设计器页 */
-.jf-designer-wrap { display: flex; flex-direction: column; height: 100%; }
+.jf-page--full { height: 100%; display: flex; flex-direction: column; }
+.jf-page--full .jf-designer-wrap { flex: 1; min-height: 0; }
+.jf-designer-wrap { display: flex; flex-direction: column; }
 .jf-designer-bar {
   display: flex; align-items: center; gap: 10px; padding: 12px 20px;
   background: var(--jf-bg, #fff); border-bottom: 1px solid var(--jf-border, #f0f0f0);

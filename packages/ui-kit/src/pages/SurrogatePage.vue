@@ -5,6 +5,7 @@
       <button v-if="can(['wf:processSurrogate:save'])" class="jf-btn jf-btn--primary jf-btn--sm" @click="openForm()">＋ 新增委托</button>
     </h2>
     <div v-if="loading" class="jf-loading">加载中...</div>
+    <div v-else-if="errorMsg" class="jf-empty">{{ errorMsg }}</div>
     <template v-else>
       <table v-if="rows.length" class="jf-table">
         <thead><tr><th>流程</th><th>被委托人</th><th>生效时间</th><th>状态</th><th>操作</th></tr></thead>
@@ -80,6 +81,7 @@ defineOptions({ name: 'JfSurrogatePage' })
 const { api, can } = useJeeflowUi()
 
 const loading = ref(false)
+const errorMsg = ref('')
 const rows = ref<SurrogateRow[]>([])
 const pageNum = ref(1)
 const pageSize = 10
@@ -93,11 +95,15 @@ const saving = ref(false)
 
 async function reload() {
   loading.value = true
+  errorMsg.value = ''
   try {
     const r = await api.processSurrogate.page({ pageNum: pageNum.value, pageSize })
     rows.value = r.rows
     recordCount.value = r.recordCount
     totalPage.value = r.totalPage
+  } catch (e) {
+    // 后端未注册扩展仓储时 processSurrogate/* 不可用
+    errorMsg.value = `委托功能不可用：${(e as Error).message}（后端需注册扩展仓储）`
   } finally {
     loading.value = false
   }

@@ -1,5 +1,5 @@
 <template>
-  <div class="jf-page">
+  <div class="jf-page jf-page--full">
     <h2 class="jf-page-title">
       流程设计
       <button v-if="can(['wf:processDesign:save'])" class="jf-btn jf-btn--primary jf-btn--sm" @click="createNew">＋ 新建流程</button>
@@ -8,6 +8,7 @@
     <!-- 设计列表 -->
     <template v-if="!designing">
       <div v-if="loading" class="jf-loading">加载中...</div>
+      <div v-else-if="errorMsg" class="jf-empty">{{ errorMsg }}</div>
       <template v-else>
         <table v-if="rows.length" class="jf-table">
           <thead><tr><th>编码</th><th>显示名</th><th>类型</th><th>部署</th><th>更新时间</th><th>操作</th></tr></thead>
@@ -47,7 +48,7 @@
       </template>
     </template>
 
-    <!-- 设计器（阶段 1 最小可用：加载/保存草稿/发布） -->
+    <!-- 设计器（编辑模式：mldong-flow-designer-plus） -->
     <div v-else class="jf-designer-wrap">
       <div class="jf-designer-bar">
         <input v-model="designName" class="jf-input" placeholder="流程编码（唯一，如 leave）" style="width:200px" />
@@ -58,15 +59,22 @@
         <button class="jf-btn jf-btn--ghost" :disabled="saving" @click="saveDraft">保存草稿</button>
         <button class="jf-btn jf-btn--primary" :disabled="saving" @click="saveAndDeploy">保存并发布</button>
       </div>
-      <div class="jf-designer-body" ref="designerHost">
-        <div class="jf-loading">设计器加载中（mldong-flow-designer-plus 编辑模式）...</div>
+      <div class="jf-designer-body">
+        <FlowDesigner
+          v-if="designing"
+          v-model:value="designJson"
+          mode="dingtalk"
+          @on-save="handleDesignerSave"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
+import FlowDesigner from 'mldong-flow-designer-plus'
+import 'mldong-flow-designer-plus/lib/style.css'
 import JfBadge from '../ui/JfBadge.vue'
 import { useJeeflowUi } from '../provider'
 import { fmtTime } from '../helpers'
@@ -77,6 +85,7 @@ defineOptions({ name: 'JfProcessDesignPage' })
 const { api, can } = useJeeflowUi()
 
 const loading = ref(false)
+const errorMsg = ref('')
 const rows = ref<DesignRow[]>([])
 const pageNum = ref(1)
 const pageSize = 10
@@ -88,16 +97,20 @@ const designing = ref(false)
 const design = ref<DesignRow & { jsonObject?: any } | null>(null)
 const designName = ref('')
 const designDisplayName = ref('')
+const designJson = ref<any>(null)
 const saving = ref(false)
-const designerHost = ref<HTMLElement | null>(null)
 
 async function reload() {
   loading.value = true
+  errorMsg.value = ''
   try {
     const r = await api.processDesign.page({ pageNum: pageNum.value, pageSize, orderBy: 't.update_time desc' })
     rows.value = r.rows
     recordCount.value = r.recordCount
     totalPage.value = r.totalPage
+  } catch (e) {
+    // 后端未注册扩展仓储（IProcessExtRepository）时 processDesign/* 不可用
+    errorMsg.value = `流程设计功能不可用：${(e as Error).message}（后端需注册扩展仓储）`
   } finally {
     loading.value = false
   }
@@ -112,9 +125,8 @@ async function createNew() {
   design.value = { id: '', name: '', displayName: '', type: 'approval', isDeployed: 0, jsonObject: null }
   designName.value = ''
   designDisplayName.value = ''
+  designJson.value = null
   designing.value = true
-  await nextTick()
-  mountDesigner(null)
 }
 
 async function edit(d: DesignRow) {
@@ -122,9 +134,9 @@ async function edit(d: DesignRow) {
   design.value = { ...d, jsonObject: detail.jsonObject }
   designName.value = d.name
   designDisplayName.value = d.displayName
+  // 设计器 v-model 数据：取最新设计稿内容（含 name/displayName/type 补齐）
+  designJson.value = detail.jsonObject ? { ...detail.jsonObject } : null
   designing.value = true
-  await nextTick()
-  mountDesigner(detail.jsonObject)
 }
 
 async function deploy(d: DesignRow) {
@@ -139,34 +151,15 @@ async function remove(d: DesignRow) {
   reload()
 }
 
-/**
- * 设计器挂载（阶段 1 最小可用）：动态 import mldong-flow-designer-plus 编辑模式。
- * 属性面板/保存联动在阶段 2 完善（对齐 vben5 designer.vue）。
- */
-async function mountDesigner(graph: any) {
-  if (!designerHost.value) return
-  designerHost.value.innerHTML = ''
-  try {
-    // 简单方式：无画布数据时显示提示；有数据时以只读预览兜底（编辑模式接入见阶段 2）
-    if (!graph) {
-      designerHost.value.innerHTML = '<div style="padding:24px;color:#888">新建设计：请使用设计器画图（编辑模式阶段 2 接入）</div>'
-    } else {
-      designerHost.value.innerHTML = '<div style="padding:24px;color:#888">设计器编辑模式（阶段 2 接入）：当前显示只读占位</div>'
-    }
-  } catch (e) {
-    designerHost.value.innerHTML = `<div style="padding:24px;color:#c33">设计器加载失败：${(e as Error).message}</div>`
-  }
-}
-
-async function saveDraft() {
+/** 设计器保存（@on-save）：先确保设计存在（新建先 save 拿 id），再 updateDefine 存草稿 */
+async function handleDesignerSave(data: any) {
   saving.value = true
   try {
-    // 阶段 1：无画布数据时仅保存基本信息（内容由设计器编辑模式提供）
     if (!design.value?.id) {
       const r = await api.processDesign.save({
-        name: designName.value,
-        displayName: designDisplayName.value,
-        type: 'approval',
+        name: designName.value || data?.name || 'new-flow',
+        displayName: designDisplayName.value || data?.displayName || '新流程',
+        type: data?.type || 'approval',
       })
       design.value = { ...design.value!, id: r.id, isDeployed: 0 }
     } else {
@@ -174,12 +167,46 @@ async function saveDraft() {
         name: designName.value, displayName: designDisplayName.value,
       })
     }
+    // 内容快照：流程 JSON（name/displayName/type 与顶部输入对齐）
+    await api.processDesign.updateDefine(design.value.id, {
+      ...data,
+      name: designName.value || data?.name,
+      displayName: designDisplayName.value || data?.displayName,
+      type: data?.type || design.value?.type || 'approval',
+    })
     reload()
   } finally {
     saving.value = false
   }
 }
 
+/** 保存草稿：以当前画布内容入库（未进设计器时仅保存基本信息） */
+async function saveDraft() {
+  if (designJson.value) {
+    await handleDesignerSave(designJson.value)
+  } else {
+    saving.value = true
+    try {
+      if (!design.value?.id) {
+        const r = await api.processDesign.save({
+          name: designName.value || 'new-flow',
+          displayName: designDisplayName.value || '新流程',
+          type: 'approval',
+        })
+        design.value = { ...design.value!, id: r.id, isDeployed: 0 }
+      } else {
+        await api.processDesign.update(design.value.id, {
+          name: designName.value, displayName: designDisplayName.value,
+        })
+      }
+      reload()
+    } finally {
+      saving.value = false
+    }
+  }
+}
+
+/** 保存并发布：画布内容入库 + 生成流程定义（version+1） */
 async function saveAndDeploy() {
   await saveDraft()
   if (design.value?.id) {
