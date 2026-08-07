@@ -40,10 +40,12 @@
       </div>
     </template>
 
-    <!-- 定义详情：流程图 + 基本信息 -->
+    <!-- 定义详情：流程图弹性铺满 -->
     <JfDrawer v-model:visible="detailVisible" :title="detail?.displayName || '流程详情'" width="820px">
-      <div v-if="detail">
-        <JfFlowViewer v-if="detail.jsonObject" :graph-data="detail.jsonObject" height="420px" />
+      <div v-if="detail" class="jf-detail-body">
+        <div v-if="detail.jsonObject" class="jf-detail-graph">
+          <JfFlowViewer :graph-data="detail.jsonObject" />
+        </div>
         <div v-else class="jf-empty">该定义无流程图（content 缺失）</div>
       </div>
     </JfDrawer>
