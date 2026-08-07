@@ -1,0 +1,20 @@
+{
+  "name": "@jeeflow/embed",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "jeeflow iframe 壳站点（阶段 3）：token 注入 + postMessage 协议 + 白标——供无法改前端代码的系统（若依等）即插即用",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.30"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "vite": "^5.3.1"
+  },
+  "license": "Apache-2.0"
+}
