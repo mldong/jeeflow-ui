@@ -19,11 +19,11 @@
   },
   "peerDependencies": {
     "vue": "^3.4.0",
-    "mldong-flow-designer-plus": "^3.0.0"
+    "mldong-flow-designer-dingtalk": "^3.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.5",
-    "mldong-flow-designer-plus": "^3.0.1",
+    "mldong-flow-designer-dingtalk": "^3.1.0",
     "typescript": "^5.5.0",
     "vite": "^5.3.1",
     "vue": "^3.4.30",

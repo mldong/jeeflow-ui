@@ -6,7 +6,7 @@
       :value="localGraphData"
       mode="dingtalk"
       :viewer="true"
-      :high-light="highLight"
+      :high-light="highLight ?? undefined"
       :theme="theme"
     />
     <div v-else-if="ready && !localGraphData" class="jf-viewer-empty">无流程图数据</div>
@@ -21,8 +21,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import FlowDesigner from 'mldong-flow-designer-plus'
-import 'mldong-flow-designer-plus/lib/style.css'
+import FlowDesigner from 'mldong-flow-designer-dingtalk'
+import 'mldong-flow-designer-dingtalk/lib/style.css'
 import type { FlowGraph, HighLightData } from '../types'
 
 defineOptions({ name: 'JfFlowViewer' })

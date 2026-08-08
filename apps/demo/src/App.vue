@@ -8,9 +8,10 @@
           v-for="b in backends"
           :key="b.value"
           class="demo-segment__item"
-          :class="{ active: backend === b.value }"
-          :title="b.value"
-          @click="switchBackend(b.value)"
+          :class="{ active: backend === b.value, disabled: b.disabled }"
+          :title="b.disabled ? b.label + '（离线）' : b.value"
+          :disabled="b.disabled"
+          @click="!b.disabled && switchBackend(b.value)"
         >{{ b.label }}</button>
       </div>
       <!-- 用户切换：下拉用户卡（头像+姓名+岗位，SPA 热切换） -->
@@ -55,14 +56,16 @@ import {
 } from '@mldong/jeeflow-ui'
 import { DEMO_USERS } from './main.js'
 
-// ── demo 特性状态 ──
+// ── demo 特性状态（从 .env 读取后端路径和 disabled 状态）──
 const backends = [
-  { label: 'Python :8100', value: 'http://localhost:8100' },
-  { label: 'Java :8080', value: 'http://localhost:8080' },
-  { label: 'Go :8081', value: 'http://localhost:8081' },
-  { label: 'Node :8082', value: 'http://localhost:8082' },
+  { label: 'Java', value: import.meta.env.VITE_BACKEND_JAVA, disabled: import.meta.env.VITE_JAVA_DISABLED === 'true' },
+  { label: 'Go', value: import.meta.env.VITE_BACKEND_GO, disabled: import.meta.env.VITE_GO_DISABLED === 'true' },
+  { label: 'Python', value: import.meta.env.VITE_BACKEND_PYTHON, disabled: import.meta.env.VITE_PYTHON_DISABLED === 'true' },
+  { label: 'Node', value: import.meta.env.VITE_BACKEND_NODE, disabled: import.meta.env.VITE_NODE_DISABLED === 'true' },
 ]
-const backend = ref(localStorage.getItem('jeeflow_backend') || backends[0].value)
+// 过滤出在线后端，取第一个作为默认
+const onlineBackends = backends.filter(b => !b.disabled)
+const backend = ref(localStorage.getItem('jeeflow_backend') || (onlineBackends[0]?.value || backends[0].value))
 const currentUser = ref(localStorage.getItem('jeeflow_user') || 'user1')
 const userOpen = ref(false)
 const refreshTick = ref(0)
@@ -148,6 +151,10 @@ function onSelect(key) {
 .demo-segment__item.active {
   background: #fff; color: var(--jf-primary, #1677ff); font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
+}
+.demo-segment__item.disabled {
+  opacity: 0.4; cursor: not-allowed;
+  color: var(--jf-text-3, #9ca3af);
 }
 
 /* 用户卡 */

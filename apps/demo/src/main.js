@@ -19,7 +19,8 @@ export const DEMO_USERS = [
 // 创建流程中心上下文（非组件形式注入：注册表在注入前可用，iframe 壳同款用法）
 const jeeflowUi = createJeeflowUi({
   // 懒求值：切换后端只改 localStorage，api 每次请求取最新（SPA 热切换，无需 reload）
-  baseUrl: () => localStorage.getItem('jeeflow_backend') || 'http://localhost:8100',
+  // 开发环境走 vite proxy（相对路径）；生产环境走 nginx proxy
+  baseUrl: () => localStorage.getItem('jeeflow_backend') || import.meta.env.VITE_BACKEND_JAVA || '/java-api',
   getOperator: () => localStorage.getItem('jeeflow_user') || 'user1',
   getToken: () => null,
   hasPermission: () => true, // demo 无权限体系：全放行（宿主接入时按 wf:{action} 权限码判断）

@@ -2,9 +2,6 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath } from 'node:url'
 
-// 默认代理到 Python demo，可在 vite.config 中改 target
-const BACKEND = process.env.JEEFLOW_BACKEND || 'http://localhost:8100'
-
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -16,8 +13,27 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: BACKEND, changeOrigin: true },
-      '/wf': { target: BACKEND, changeOrigin: true },
+      // 开发环境：相对路径代理到本地后端，rewrite 去掉前缀
+      '/java-api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/java-api/, ''),
+      },
+      '/go-api': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/go-api/, ''),
+      },
+      '/python-api': {
+        target: 'http://localhost:8100',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/python-api/, ''),
+      },
+      '/node-api': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/node-api/, ''),
+      },
     },
   },
 })

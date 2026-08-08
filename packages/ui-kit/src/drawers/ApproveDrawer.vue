@@ -13,9 +13,9 @@
         </div>
       </template>
 
-      <!-- 流程图（上下文定位） -->
+      <!-- 流程图（上下文定位，含高亮） -->
       <div v-if="task.jsonObject" class="jf-detail-graph">
-        <JfFlowViewer :graph-data="task.jsonObject" height="280px" />
+        <JfFlowViewer :graph-data="task.jsonObject" :high-light="highLight" height="280px" />
       </div>
 
       <!-- 办理表单（注册表 → __schema__ → tf_ 兜底）。
@@ -102,7 +102,7 @@ import JfUserPicker from '../ui/JfUserPicker.vue'
 import { SchemaForm } from '../form-registry'
 import { useJeeflowUi } from '../provider'
 import { SubmitType } from '../types'
-import type { TaskDetail, JumpableTaskRow } from '../types'
+import type { TaskDetail, JumpableTaskRow, HighLightData } from '../types'
 
 defineOptions({ name: 'JfApproveDrawer' })
 
@@ -123,6 +123,7 @@ const { api, getForm } = useJeeflowUi()
 
 const loading = ref(false)
 const task = ref<TaskDetail | null>(null)
+const highLight = ref<HighLightData | null>(null)
 const formData = ref<Record<string, any>>({})
 const comment = ref('')
 const submitting = ref(false)
@@ -192,6 +193,7 @@ watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
   if (!v || !id) return
   loading.value = true
   task.value = null
+  highLight.value = null
   formData.value = {}
   comment.value = ''
   actorIds.value = []
@@ -199,6 +201,12 @@ watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
   nextOperators.value = []
   try {
     task.value = await api.processTask.detail(id)
+    // 流程高亮（与待办详情一致；失败不阻塞办理）
+    try {
+      highLight.value = await api.processInstance.highLight(task.value.processInstanceId)
+    } catch {
+      highLight.value = null
+    }
   } finally {
     loading.value = false
   }
