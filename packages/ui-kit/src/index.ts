@@ -22,6 +22,8 @@ export * from './helpers'
 export { default as JfDrawer } from './ui/JfDrawer.vue'
 export { default as JfBadge } from './ui/JfBadge.vue'
 export { default as JfFlowViewer } from './ui/JfFlowViewer.vue'
+export { default as JfUserPicker } from './ui/JfUserPicker.vue'
+export { default as JfIcon } from './ui/JfIcon.vue'
 
 // 布局
 export { default as JfLayout } from './layout/JfLayout.vue'
@@ -33,6 +35,7 @@ export { default as JfApproveDrawer } from './drawers/ApproveDrawer.vue'
 export { default as JfInstanceDetailDrawer } from './drawers/InstanceDetailDrawer.vue'
 
 // 页面组件
+export { default as JfWorkbenchPage } from './pages/WorkbenchPage.vue'
 export { default as JfApplyListPage } from './pages/ApplyListPage.vue'
 export { default as JfMyInstancePage } from './pages/MyInstancePage.vue'
 export { default as JfTodoPage } from './pages/TodoPage.vue'

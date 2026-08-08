@@ -1,16 +1,25 @@
 <template>
   <div class="jf-page">
-    <h2 class="jf-page-title">📗 我的已办</h2>
+    <h2 class="jf-page-title">
+      <JfIcon name="done" :size="18" /> 我的已办
+      <input
+        v-model="keyword"
+        class="jf-input jf-page-search"
+        placeholder="搜索流程名..."
+        @keyup.enter="goSearch"
+      />
+    </h2>
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else>
       <table v-if="rows.length" class="jf-table">
-        <thead><tr><th>流程</th><th>任务</th><th>状态</th><th>完成时间</th></tr></thead>
+        <thead><tr><th>流程</th><th>任务</th><th>状态</th><th>完成时间</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="t in rows" :key="t.id">
-            <td>{{ t.processDefineDisplayName || t.defineName }}</td>
+            <td>{{ t.processDefineDisplayName || '-' }}</td>
             <td><strong>{{ t.displayName }}</strong></td>
             <td><JfBadge :type="taskStateBadgeType(t.taskState)">{{ taskStateLabel(t.taskState) }}</JfBadge></td>
             <td class="jf-muted">{{ fmtTime(t.finishTime || t.createTime, true) }}</td>
+            <td><button class="jf-btn jf-btn--ghost jf-btn--sm" @click="openDetail(t.processInstanceId)">详情</button></td>
           </tr>
         </tbody>
       </table>
@@ -22,14 +31,20 @@
         <button class="jf-btn jf-btn--ghost jf-btn--sm" :disabled="pageNum >= totalPage" @click="go(pageNum + 1)">下一页</button>
       </div>
     </template>
+
+    <!-- 详情抽屉（看轨迹） -->
+    <InstanceDetailDrawer v-model:visible="detailVisible" :instance-id="detailInstanceId" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import JfBadge from '../ui/JfBadge.vue'
+import JfIcon from '../ui/JfIcon.vue'
+import InstanceDetailDrawer from '../drawers/InstanceDetailDrawer.vue'
 import { useJeeflowUi } from '../provider'
 import { fmtTime, taskStateLabel, taskStateBadgeType } from '../helpers'
+import { toast } from '../toast'
 import type { TaskRow } from '../types'
 
 defineOptions({ name: 'JfDonePage' })
@@ -42,14 +57,24 @@ const pageNum = ref(1)
 const pageSize = 10
 const recordCount = ref(0)
 const totalPage = ref(0)
+const keyword = ref('')
+
+const detailVisible = ref(false)
+const detailInstanceId = ref<string | null>(null)
 
 async function reload() {
   loading.value = true
   try {
-    const r = await api.processTask.doneList({ pageNum: pageNum.value, pageSize })
+    const r = await api.processTask.doneList({
+      pageNum: pageNum.value, pageSize,
+      ...(keyword.value.trim()
+        ? { m_LIKE_processDefineDisplayName: keyword.value.trim() } : {}),
+    })
     rows.value = r.rows
     recordCount.value = r.recordCount
     totalPage.value = r.totalPage
+  } catch (e) {
+    toast.error((e as Error).message || '加载已办列表失败')
   } finally {
     loading.value = false
   }
@@ -60,5 +85,19 @@ function go(p: number) {
   reload()
 }
 
+function goSearch() {
+  pageNum.value = 1
+  reload()
+}
+
+function openDetail(instanceId: string) {
+  detailInstanceId.value = instanceId
+  detailVisible.value = true
+}
+
 onMounted(reload)
 </script>
+
+<style scoped>
+.jf-page-search { width: 220px; margin-left: auto; font-weight: normal; }
+</style>

@@ -1,6 +1,14 @@
 <template>
   <div class="jf-page">
-    <h2 class="jf-page-title">📝 我发起的流程</h2>
+    <h2 class="jf-page-title">
+      <JfIcon name="mine" :size="18" /> 我发起的流程
+      <input
+        v-model="keyword"
+        class="jf-input jf-page-search"
+        placeholder="搜索流程名..."
+        @keyup.enter="goSearch"
+      />
+    </h2>
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else>
       <table v-if="rows.length" class="jf-table">
@@ -36,9 +44,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import JfBadge from '../ui/JfBadge.vue'
+import JfIcon from '../ui/JfIcon.vue'
 import InstanceDetailDrawer from '../drawers/InstanceDetailDrawer.vue'
 import { useJeeflowUi } from '../provider'
 import { fmtTime, stateLabel, stateBadgeType } from '../helpers'
+import { toast } from '../toast'
 import type { InstanceRow } from '../types'
 
 defineOptions({ name: 'JfMyInstancePage' })
@@ -51,6 +61,7 @@ const pageNum = ref(1)
 const pageSize = 10
 const recordCount = ref(0)
 const totalPage = ref(0)
+const keyword = ref('')
 
 const detailVisible = ref(false)
 const detailInstanceId = ref<string | null>(null)
@@ -58,10 +69,16 @@ const detailInstanceId = ref<string | null>(null)
 async function reload() {
   loading.value = true
   try {
-    const r = await api.processInstance.page({ pageNum: pageNum.value, pageSize })
+    const r = await api.processInstance.page({
+      pageNum: pageNum.value, pageSize,
+      ...(keyword.value.trim()
+        ? { m_LIKE_processDefineDisplayName: keyword.value.trim() } : {}),
+    })
     rows.value = r.rows
     recordCount.value = r.recordCount
     totalPage.value = r.totalPage
+  } catch (e) {
+    toast.error((e as Error).message || '加载实例列表失败')
   } finally {
     loading.value = false
   }
@@ -72,6 +89,11 @@ function go(p: number) {
   reload()
 }
 
+function goSearch() {
+  pageNum.value = 1
+  reload()
+}
+
 function openDetail(id: string) {
   detailInstanceId.value = id
   detailVisible.value = true
@@ -79,9 +101,19 @@ function openDetail(id: string) {
 
 async function withdraw(row: InstanceRow) {
   if (!window.confirm('确认撤回该流程？')) return
-  await api.processInstance.withdraw(row.id)
-  reload()
+  try {
+    await api.processInstance.withdraw(row.id)
+    toast.success('已撤回')
+    reload()
+  } catch (e) {
+    // 撤回可能因实例已办结/已被办理而失败（负向路径），提示后端原因
+    toast.error(`撤回失败：${(e as Error).message}`)
+  }
 }
 
 onMounted(reload)
 </script>
+
+<style scoped>
+.jf-page-search { width: 220px; margin-left: auto; font-weight: normal; }
+</style>

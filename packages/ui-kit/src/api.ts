@@ -16,14 +16,18 @@ import type {
 // ── 配置 ──────────────────────────────────────────────────────────────────
 
 export interface JeeflowApiConfig {
-  /** 后端根地址，如 http://localhost:8100（门面路由为 {baseUrl}/wf/{action}） */
-  baseUrl: string
+  /** 后端根地址，如 http://localhost:8100（门面路由为 {baseUrl}/wf/{action}）；
+   *  可传函数——每次请求时求值，支持宿主 SPA 内热切换后端 */
+  baseUrl: string | (() => string)
   /** 当前用户 id 提供器——对应门面契约 operator（"我的"语义依赖） */
   getOperator: () => string
   /** 登录态提供器（可选）：注入 Authorization: Bearer <token> */
   getToken?: () => string | null
   /** 权限码判断器（可选）：宿主按 wf:{action} 权限码控制按钮显隐 */
   hasPermission?: (codes: string[]) => boolean
+  /** 用户搜索源（可选）：无任务上下文的选人场景（转办/抄送/委托）依赖；
+   *  有 taskId 时 JfUserPicker 优先走 candidatePage，未传则用此钩子 */
+  listUsers?: (keyword: string) => Promise<Array<Record<string, any>>>
   /** 自定义 fetch（可选）：测试注入/SSR/超时控制 */
   fetchImpl?: typeof fetch
   /** 请求拦截（可选）：统一加 header / 改 body */
@@ -41,7 +45,9 @@ export class JeeflowApiError extends Error {
 // ── 创建 API 实例 ─────────────────────────────────────────────────────────
 
 export function createJeeflowApi(cfg: JeeflowApiConfig) {
-  const baseUrl = cfg.baseUrl.replace(/\/+$/, '')
+  // 懒求值：baseUrl 传函数时每次请求取最新（宿主热切换后端无需重建 api）
+  const resolveBaseUrl = () =>
+    (typeof cfg.baseUrl === 'function' ? cfg.baseUrl() : cfg.baseUrl).replace(/\/+$/, '')
   const fetchImpl = cfg.fetchImpl ?? fetch
 
   async function flow<T = unknown>(action: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -54,7 +60,7 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
     if (token) headers['Authorization'] = `Bearer ${token}`
     let resp: Response
     try {
-      resp = await fetchImpl(`${baseUrl}/wf/${action}`, {
+      resp = await fetchImpl(`${resolveBaseUrl()}/wf/${action}`, {
         method: 'POST', headers, body: JSON.stringify(body),
       })
     } catch (e) {

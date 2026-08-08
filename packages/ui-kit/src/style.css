@@ -1,7 +1,25 @@
 /**
- * @mldong/jeeflow-ui 全局样式（主题变量 + 通用类）
+ * @mldong/jeeflow-ui 全局样式（主题 tokens + 通用类）
  * 宿主引入一次：import '@mldong/jeeflow-ui/dist/jeeflow-ui.css'
  */
+
+/* 主题 tokens（钉钉风浅色办公风）——宿主可重定义覆盖（白标/主题色） */
+:root {
+  --jf-primary: #1677ff;
+  --jf-primary-soft: #e8f1ff;
+  --jf-success: #52c41a;
+  --jf-danger: #ff4d4f;
+  --jf-warn: #faad14;
+  --jf-text: #1f2937;
+  --jf-text-2: #4b5563;
+  --jf-muted: #9ca3af;
+  --jf-bg: #fff;
+  --jf-content-bg: #f5f7fa;
+  --jf-header-bg: #fff;
+  --jf-sider-bg: #fff;
+  --jf-hover: #f5f7fa;
+  --jf-border: #e8eaed;
+}
 
 .jf-page { padding: 20px 24px; }
 .jf-page-title {
@@ -16,15 +34,15 @@
   border-radius: 10px; padding: 14px; cursor: pointer; transition: all .15s;
 }
 .jf-card:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, .08); border-color: var(--jf-primary, #1677ff); }
-.jf-card-icon { font-size: 26px; margin-bottom: 8px; }
+.jf-card-icon { font-size: 26px; margin-bottom: 8px; color: var(--jf-primary, #1677ff); display: flex; }
 .jf-card-name { font-size: 14px; font-weight: 600; color: var(--jf-text, #333); }
 .jf-card-remark { font-size: 12px; color: #999; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 表格 */
 .jf-table { width: 100%; border-collapse: collapse; background: var(--jf-bg, #fff); border-radius: 8px; overflow: hidden; }
 .jf-table th, .jf-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--jf-border, #f0f0f0); font-size: 14px; }
-.jf-table th { background: #fafafa; font-weight: 600; color: #555; }
-.jf-table tbody tr:hover { background: #fafcff; }
+.jf-table th { background: var(--jf-hover, #fafafa); font-weight: 600; color: var(--jf-text-2, #555); }
+.jf-table tbody tr:hover { background: var(--jf-primary-soft, #fafcff); }
 .jf-row-flash { background: #fffbe6; }
 
 /* 按钮 */
@@ -91,3 +109,22 @@
   background: var(--jf-bg, #fff); border-bottom: 1px solid var(--jf-border, #f0f0f0);
 }
 .jf-designer-body { flex: 1; min-height: 0; background: #fafbfc; position: relative; }
+
+/* 轻量 toast（toast.ts DOM 注入） */
+.jf-toast-host {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 3000; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  pointer-events: none;
+}
+.jf-toast {
+  padding: 8px 18px; border-radius: 8px; font-size: 13px; line-height: 1.5;
+  color: #fff; background: rgba(0, 0, 0, .75); box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
+  animation: jf-toast-in .18s ease-out;
+}
+.jf-toast--success { background: var(--jf-success, #52c41a); }
+.jf-toast--error { background: var(--jf-danger, #ff4d4f); }
+.jf-toast--info { background: rgba(0, 0, 0, .75); }
+@keyframes jf-toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

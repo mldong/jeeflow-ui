@@ -3,7 +3,10 @@
     <!-- 顶部 -->
     <header class="jf-layout__header">
       <div class="jf-layout__brand" @click="select(menus[0]?.key)">
-        <span class="jf-layout__logo">{{ logo || '🧊' }}</span>
+        <span class="jf-layout__logo">
+          <JfIcon v-if="!logo" name="define" :size="22" />
+          <template v-else>{{ logo }}</template>
+        </span>
         <span class="jf-layout__title">{{ title }}</span>
       </div>
       <div class="jf-layout__header-right">
@@ -22,7 +25,7 @@
             :class="{ 'jf-menu__item--active': m.key === selectedKey }"
             @click="select(m.key)"
           >
-            <span class="jf-menu__icon">{{ m.icon || '•' }}</span>
+            <span class="jf-menu__icon"><JfIcon :name="m.icon || 'doc'" :size="17" /></span>
             <span>{{ m.title }}</span>
           </div>
         </nav>
@@ -39,6 +42,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Component } from 'vue'
+import JfIcon from '../ui/JfIcon.vue'
 import { useJeeflowUi } from '../provider'
 
 defineOptions({ name: 'JfLayout' })
@@ -47,6 +51,7 @@ export interface JfMenuItem {
   /** 唯一 key（路由 path 或 id） */
   key: string
   title: string
+  /** 图标：JfIcon 图标名（home/apply/todo/done/mine/cc/define/design/surrogate…）；未知名降级文本 */
   icon?: string
   /** 权限码：任一命中才显示（superAdmin 由宿主 hasPermission 处理） */
   perms?: string[]
@@ -98,28 +103,37 @@ function select(key: string) {
 </script>
 
 <style scoped>
-.jf-layout { display: flex; flex-direction: column; height: 100vh; }
+.jf-layout { display: flex; flex-direction: column; height: 100vh; background: var(--jf-content-bg, #f5f7fa); }
 .jf-layout__header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px; height: 56px; flex-shrink: 0;
-  background: var(--jf-header-bg, #1a1a2e); color: #fff;
+  background: var(--jf-header-bg, #fff); color: var(--jf-text, #1f2937);
+  border-bottom: 1px solid var(--jf-border, #eef0f3);
 }
 .jf-layout__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.jf-layout__logo { font-size: 20px; }
-.jf-layout__title { font-size: 17px; font-weight: 600; }
+.jf-layout__logo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--jf-primary, #1677ff); color: #fff;
+}
+.jf-layout__title { font-size: 16px; font-weight: 600; }
 .jf-layout__header-right { display: flex; align-items: center; gap: 12px; }
 .jf-layout__body { display: flex; flex: 1; min-height: 0; }
 .jf-layout__sider {
   width: 200px; flex-shrink: 0; overflow-y: auto;
-  background: var(--jf-sider-bg, #16213e); padding: 12px 8px;
+  background: var(--jf-sider-bg, #fff); padding: 12px 8px;
+  border-right: 1px solid var(--jf-border, #eef0f3);
 }
 .jf-menu__item {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 10px;
   padding: 10px 14px; border-radius: 8px; cursor: pointer;
-  color: #c8d0e0; font-size: 14px; transition: all .15s; margin-bottom: 2px;
+  color: var(--jf-text-2, #4b5563); font-size: 14px; transition: all .15s; margin-bottom: 2px;
 }
-.jf-menu__item:hover { background: rgba(255, 255, 255, .06); color: #fff; }
-.jf-menu__item--active { background: var(--jf-primary, #1677ff); color: #fff; }
-.jf-menu__icon { width: 18px; text-align: center; }
+.jf-menu__item:hover { background: var(--jf-hover, #f5f7fa); color: var(--jf-text, #1f2937); }
+.jf-menu__item--active {
+  background: var(--jf-primary-soft, #e8f1ff); color: var(--jf-primary, #1677ff); font-weight: 500;
+}
+.jf-menu__item--active:hover { background: var(--jf-primary-soft, #e8f1ff); color: var(--jf-primary, #1677ff); }
+.jf-menu__icon { width: 18px; display: inline-flex; justify-content: center; }
 .jf-layout__content { flex: 1; min-width: 0; overflow-y: auto; background: var(--jf-content-bg, #f5f7fa); }
 </style>

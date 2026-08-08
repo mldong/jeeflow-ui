@@ -39,18 +39,21 @@ await api.processTask.execute(taskId, SubmitType.AGREE, { tf_approvalComment: '�
 
 ```bash
 pnpm install
-pnpm dev          # 启动演示站（默认 :5173）
+pnpm dev          # 启动演示站（默认 :5173；端口占用时自动递增）
 pnpm build        # 构建全部（ui-kit 库模式 + demo）
+
+# embed iframe 壳（异栈系统接入样板）
+cd apps/embed && pnpm dev      # 默认 :5176；public/host.html 为宿主示例页
 ```
 
 ## 阶段路线
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| 0 | monorepo 骨架 + 数据层（types/api/provider/表单注册表） | ✅ 本仓库当前 |
-| 1 | 核心组件拆出（FlowList/StartDrawer/TodoList/ApproveDrawer/InstanceDetail/FlowViewer） | ⏳ |
+| 0 | monorepo 骨架 + 数据层（types/api/provider/表单注册表） | ✅ |
+| 1 | 核心组件拆出（全量页面/抽屉/人员选择器/工作台，ui-kit 内 40 action 全消费） | ✅ |
 | 2 | npm 发布 `@mldong/jeeflow-ui` + demo 薄壳化 + 集成文档 | ⏳ |
-| 3 | iframe 壳（embed）：token 注入 + postMessage 协议 + 白标 | ⏳ |
+| 3 | iframe 壳（embed）：URL+postMessage 双通道注入 + 事件上报 + 白标 | ✅ |
 
 ## 相关
 

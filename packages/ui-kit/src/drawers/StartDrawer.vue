@@ -2,15 +2,28 @@
   <JfDrawer :visible="visible" :title="title" :width="width" @update:visible="emit('update:visible', $event)">
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else>
-      <!-- 表单：注册表优先 → __schema__ → f_ 字段兜底。
-           只传 v-model：注册组件自带字段定义；fieldLabels 等 attrs 会覆盖注册组件内部绑定，不传 -->
+      <!-- 表单：注册表优先 → __schema__ → SchemaForm 兜底（formKey 空也可提交纯流程参数）。
+           注册组件自带字段定义，不传额外 attrs；仅 SchemaForm 兜底时传 fieldLabels -->
       <component
         :is="formComponent"
         v-if="formComponent"
         v-model="formData"
+        v-bind="formExtraAttrs"
         @submit="doStart"
       />
-      <div v-else class="jf-empty">该流程未注册表单（registerForm('{{ formKey }}', ...)）</div>
+
+      <!-- 发起选项：抄送人 / 下一节点预指派 -->
+      <details class="jf-more">
+        <summary>更多选项（抄送 / 下一节点处理人）</summary>
+        <div class="jf-form-item">
+          <label class="jf-form-label">发起时抄送（f_ccActors）</label>
+          <JfUserPicker v-model="ccActors" placeholder="搜索并选择抄送人" />
+        </div>
+        <div class="jf-form-item">
+          <label class="jf-form-label">预指派下一节点处理人（f_nextNodeOperator）</label>
+          <JfUserPicker v-model="nextOperators" placeholder="搜索并选择处理人" />
+        </div>
+      </details>
 
       <div class="jf-drawer-actions">
         <button class="jf-btn jf-btn--ghost" @click="emit('update:visible', false)">取消</button>
@@ -23,12 +36,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, h } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Component } from 'vue'
 import JfDrawer from '../ui/JfDrawer.vue'
+import JfUserPicker from '../ui/JfUserPicker.vue'
 import { SchemaForm } from '../form-registry'
 import { useJeeflowUi } from '../provider'
 import { firstTaskFormKey } from '../helpers'
+import { toast } from '../toast'
 
 defineOptions({ name: 'JfStartDrawer' })
 
@@ -53,14 +68,20 @@ const formKey = ref('')
 const formData = ref<Record<string, any>>({})
 const fieldLabels = ref<Record<string, string>>({})
 const schemaData = ref<Record<string, any> | null>(null)
+const ccActors = ref<string[]>([])
+const nextOperators = ref<string[]>([])
 
-// 注册表表单优先；无则 __schema__ 或 f_ 字段走 SchemaForm 兜底
+// 注册表表单优先；无则 SchemaForm 兜底（formKey 空时也渲染，允许纯流程参数发起）
 const formComponent = computed<Component | null>(() => {
-  if (!formKey.value) return null
-  const registered = getForm(formKey.value, 'start')
-  if (registered) return registered
+  if (formKey.value) {
+    const registered = getForm(formKey.value, 'start')
+    if (registered) return registered
+  }
   return SchemaForm
 })
+// SchemaForm 兜底时传字段标签；注册组件不传（避免 fallthrough 覆盖其内部绑定）
+const formExtraAttrs = computed(() =>
+  formComponent.value === SchemaForm ? { fieldLabels: fieldLabels.value } : {})
 
 watch(() => props.visible, async (v) => {
   if (!v) return
@@ -68,6 +89,8 @@ watch(() => props.visible, async (v) => {
   formData.value = {}
   fieldLabels.value = {}
   schemaData.value = null
+  ccActors.value = []
+  nextOperators.value = []
   if (!props.define) return
   loading.value = true
   try {
@@ -93,7 +116,7 @@ watch(() => props.visible, async (v) => {
 
 async function doStart() {
   if (!props.define?.processDefineId) {
-    window.alert('缺少 processDefineId，无法发起')
+    toast.error('缺少 processDefineId，无法发起')
     return
   }
   starting.value = true
@@ -104,11 +127,23 @@ async function doStart() {
       if (v === '' || v == null) continue
       form[k.startsWith('f_') ? k : `f_${k}`] = v
     }
+    // 抄送 / 下一节点预指派（f_ 前缀）
+    if (ccActors.value.length) form.f_ccActors = ccActors.value
+    if (nextOperators.value.length) form.f_nextNodeOperator = nextOperators.value
     const r = await api.processDefine.startAndExecute(props.define.processDefineId, form)
+    toast.success('发起成功')
     emit('started', r.processInstanceId)
     emit('update:visible', false)
+  } catch (e) {
+    toast.error((e as Error).message || '发起失败')
   } finally {
     starting.value = false
   }
 }
 </script>
+
+<style scoped>
+.jf-more { margin: 8px 0; font-size: 13px; }
+.jf-more summary { cursor: pointer; color: var(--jf-primary, #1677ff); user-select: none; }
+.jf-more[open] { padding-bottom: 4px; }
+</style>

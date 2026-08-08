@@ -1,7 +1,7 @@
 <template>
   <div class="jf-page">
     <h2 class="jf-page-title">
-      我的委托
+      <JfIcon name="surrogate" :size="18" /> 我的委托
       <button v-if="can(['wf:processSurrogate:save'])" class="jf-btn jf-btn--primary jf-btn--sm" @click="openForm()">＋ 新增委托</button>
     </h2>
     <div v-if="loading" class="jf-loading">加载中...</div>
@@ -17,6 +17,7 @@
             <td><JfBadge :type="s.enabled === 1 ? 'done' : 'info'">{{ s.enabled === 1 ? '启用' : '停用' }}</JfBadge></td>
             <td>
               <div class="jf-btn-row">
+                <button class="jf-btn jf-btn--ghost jf-btn--sm" @click="toggleEnabled(s)">{{ s.enabled === 1 ? '停用' : '启用' }}</button>
                 <button class="jf-btn jf-btn--ghost jf-btn--sm" @click="openForm(s)">编辑</button>
                 <button class="jf-btn jf-btn--danger jf-btn--sm" @click="remove(s)">删除</button>
               </div>
@@ -40,8 +41,8 @@
         <input v-model="form.processName" class="jf-input" placeholder="leave" />
       </div>
       <div class="jf-form-item">
-        <label class="jf-form-label">被委托人 userId *</label>
-        <input v-model="form.surrogate" class="jf-input" placeholder="userA" />
+        <label class="jf-form-label">被委托人 *</label>
+        <JfUserPicker v-model="surrogatePicked" placeholder="输入姓名/工号搜索" />
       </div>
       <div class="jf-form-row">
         <div class="jf-form-item">
@@ -69,11 +70,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import JfBadge from '../ui/JfBadge.vue'
 import JfDrawer from '../ui/JfDrawer.vue'
+import JfUserPicker from '../ui/JfUserPicker.vue'
+import JfIcon from '../ui/JfIcon.vue'
 import { useJeeflowUi } from '../provider'
 import { fmtTime } from '../helpers'
+import { toast } from '../toast'
 import type { SurrogateRow } from '../types'
 
 defineOptions({ name: 'JfSurrogatePage' })
@@ -92,6 +96,12 @@ const formVisible = ref(false)
 const formId = ref<string | null>(null)
 const form = ref<Record<string, any>>({})
 const saving = ref(false)
+
+// 单选语义：JfUserPicker 是数组模型，取首元素写入 form.surrogate
+const surrogatePicked = computed<string[]>({
+  get: () => (form.value.surrogate ? [form.value.surrogate] : []),
+  set: (v) => { form.value.surrogate = v[0] ?? '' },
+})
 
 async function reload() {
   loading.value = true
@@ -128,7 +138,7 @@ function openForm(s?: SurrogateRow) {
 
 async function save() {
   if (!form.value.surrogate || !form.value.startTime || !form.value.endTime) {
-    window.alert('被委托人/生效时间/失效时间必填')
+    toast.error('被委托人/生效时间/失效时间必填')
     return
   }
   saving.value = true
@@ -140,17 +150,43 @@ async function save() {
     }
     if (formId.value) payload.id = formId.value
     await api.processSurrogate.save(payload)
+    toast.success('已保存')
     formVisible.value = false
     reload()
+  } catch (e) {
+    toast.error(`保存失败：${(e as Error).message}`)
   } finally {
     saving.value = false
   }
 }
 
+/** 快捷启停：facade save 带 id 时全量覆盖字段，须回传整行 */
+async function toggleEnabled(s: SurrogateRow) {
+  try {
+    await api.processSurrogate.save({
+      id: s.id,
+      processName: s.processName ?? '',
+      surrogate: s.surrogate,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      enabled: s.enabled === 1 ? 0 : 1,
+    })
+    toast.success(s.enabled === 1 ? '已停用' : '已启用')
+    reload()
+  } catch (e) {
+    toast.error(`操作失败：${(e as Error).message}`)
+  }
+}
+
 async function remove(s: SurrogateRow) {
   if (!window.confirm('确认删除该委托？')) return
-  await api.processSurrogate.remove(s.id)
-  reload()
+  try {
+    await api.processSurrogate.remove(s.id)
+    toast.success('已删除')
+    reload()
+  } catch (e) {
+    toast.error(`删除失败：${(e as Error).message}`)
+  }
 }
 
 onMounted(reload)

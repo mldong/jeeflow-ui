@@ -32,6 +32,12 @@ importers:
 
   apps/embed:
     dependencies:
+      '@mldong/jeeflow-ui':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
+      mldong-flow-designer-plus:
+        specifier: ^3.0.1
+        version: 3.0.3(ant-design-vue@4.2.6(vue@3.5.41(typescript@5.9.3)))(element-plus@2.14.4(vue@3.5.41(typescript@5.9.3)))(vue@3.5.41(typescript@5.9.3))
       vue:
         specifier: ^3.4.30
         version: 3.5.41(typescript@5.9.3)

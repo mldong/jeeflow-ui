@@ -1,7 +1,13 @@
 <template>
   <div class="jf-page jf-page--full">
     <h2 class="jf-page-title">
-      流程设计
+      <JfIcon name="design" :size="18" /> 流程设计
+      <input
+        v-model="keyword"
+        class="jf-input jf-page-search"
+        placeholder="搜索编码/显示名..."
+        @keyup.enter="goSearch"
+      />
       <button v-if="can(['wf:processDesign:save'])" class="jf-btn jf-btn--primary jf-btn--sm" @click="createNew">＋ 新建流程</button>
     </h2>
 
@@ -22,12 +28,12 @@
               <td>
                 <div class="jf-btn-row">
                   <button class="jf-btn jf-btn--ghost jf-btn--sm" @click="edit(d)">编辑</button>
+                  <!-- 已部署 → 重新发布（redeploy，对齐 E2E S8）；未部署 → 首发 -->
                   <button
                     v-if="can(['wf:processDesign:deploy'])"
                     class="jf-btn jf-btn--primary jf-btn--sm"
-                    :disabled="d.isDeployed === 1"
                     @click="deploy(d)"
-                  >{{ d.isDeployed === 1 ? '已发布' : '发布' }}</button>
+                  >{{ d.isDeployed === 1 ? '重新发布' : '发布' }}</button>
                   <button
                     v-if="can(['wf:processDesign:remove'])"
                     class="jf-btn jf-btn--danger jf-btn--sm"
@@ -55,7 +61,7 @@
         <input v-model="designDisplayName" class="jf-input" placeholder="显示名（如 请假审批）" style="width:200px" />
         <span class="jf-muted" style="font-size:13px">{{ design?.isDeployed === 1 ? '（已发布，改动后需重新发布）' : '（未发布）' }}</span>
         <div style="flex:1"></div>
-        <button class="jf-btn jf-btn--ghost" @click="designing = false">返回列表</button>
+        <button class="jf-btn jf-btn--ghost" @click="designing = false; reload()">返回列表</button>
         <button class="jf-btn jf-btn--ghost" :disabled="saving" @click="saveDraft">保存草稿</button>
         <button class="jf-btn jf-btn--primary" :disabled="saving" @click="saveAndDeploy">保存并发布</button>
       </div>
@@ -76,8 +82,10 @@ import { ref, onMounted } from 'vue'
 import FlowDesigner from 'mldong-flow-designer-plus'
 import 'mldong-flow-designer-plus/lib/style.css'
 import JfBadge from '../ui/JfBadge.vue'
+import JfIcon from '../ui/JfIcon.vue'
 import { useJeeflowUi } from '../provider'
 import { fmtTime } from '../helpers'
+import { toast } from '../toast'
 import type { DesignRow } from '../types'
 
 defineOptions({ name: 'JfProcessDesignPage' })
@@ -91,6 +99,7 @@ const pageNum = ref(1)
 const pageSize = 10
 const recordCount = ref(0)
 const totalPage = ref(0)
+const keyword = ref('')
 
 // 设计器状态
 const designing = ref(false)
@@ -104,7 +113,10 @@ async function reload() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const r = await api.processDesign.page({ pageNum: pageNum.value, pageSize, orderBy: 't.update_time desc' })
+    const r = await api.processDesign.page({
+      pageNum: pageNum.value, pageSize, orderBy: 't.update_time desc',
+      ...(keyword.value.trim() ? { m_LIKE_displayName: keyword.value.trim() } : {}),
+    })
     rows.value = r.rows
     recordCount.value = r.recordCount
     totalPage.value = r.totalPage
@@ -118,6 +130,11 @@ async function reload() {
 
 function go(p: number) {
   pageNum.value = p
+  reload()
+}
+
+function goSearch() {
+  pageNum.value = 1
   reload()
 }
 
@@ -139,16 +156,29 @@ async function edit(d: DesignRow) {
   designing.value = true
 }
 
+/** 发布/重新发布：未部署走 deploy；已部署走 redeploy（改版重发布，对齐 E2E S8） */
 async function deploy(d: DesignRow) {
-  if (!window.confirm(`确认发布设计「${d.displayName}」？（生成流程定义，版本+1）`)) return
-  await api.processDesign.deploy(d.id)
-  reload()
+  const re = d.isDeployed === 1
+  if (!window.confirm(`确认${re ? '重新' : ''}发布设计「${d.displayName}」？（${re ? '已部署流程改版重发布' : '生成流程定义，版本+1'}）`)) return
+  try {
+    if (re) await api.processDesign.redeploy(d.id)
+    else await api.processDesign.deploy(d.id)
+    toast.success(re ? '重新发布成功' : '发布成功')
+    reload()
+  } catch (e) {
+    toast.error((e as Error).message || '发布失败')
+  }
 }
 
 async function remove(d: DesignRow) {
   if (!window.confirm(`确认删除设计「${d.displayName}」？`)) return
-  await api.processDesign.remove(d.id)
-  reload()
+  try {
+    await api.processDesign.remove(d.id)
+    toast.success('已删除')
+    reload()
+  } catch (e) {
+    toast.error((e as Error).message || '删除失败')
+  }
 }
 
 /** 设计器保存（@on-save）：先确保设计存在（新建先 save 拿 id），再 updateDefine 存草稿 */
@@ -210,10 +240,19 @@ async function saveDraft() {
 async function saveAndDeploy() {
   await saveDraft()
   if (design.value?.id) {
-    await api.processDesign.deploy(design.value.id)
-    reload()
+    try {
+      await api.processDesign.deploy(design.value.id)
+      toast.success('发布成功')
+      reload()
+    } catch (e) {
+      toast.error((e as Error).message || '发布失败')
+    }
   }
 }
 
 onMounted(reload)
 </script>
+
+<style scoped>
+.jf-page-search { width: 220px; font-weight: normal; }
+</style>
