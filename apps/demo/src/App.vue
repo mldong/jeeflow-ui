@@ -62,6 +62,7 @@ const backends = [
   { label: 'Go', value: import.meta.env.VITE_BACKEND_GO, disabled: import.meta.env.VITE_GO_DISABLED === 'true' },
   { label: 'Python', value: import.meta.env.VITE_BACKEND_PYTHON, disabled: import.meta.env.VITE_PYTHON_DISABLED === 'true' },
   { label: 'Node', value: import.meta.env.VITE_BACKEND_NODE, disabled: import.meta.env.VITE_NODE_DISABLED === 'true' },
+  { label: 'PHP', value: import.meta.env.VITE_BACKEND_PHP, disabled: import.meta.env.VITE_PHP_DISABLED === 'true' },
 ]
 // 过滤出在线后端，取第一个作为默认
 const onlineBackends = backends.filter(b => !b.disabled)

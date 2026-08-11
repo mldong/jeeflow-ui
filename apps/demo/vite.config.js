@@ -34,6 +34,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/node-api/, ''),
       },
+      '/php-api': {
+        target: 'http://localhost:8090',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/php-api/, ''),
+      },
     },
   },
 })
