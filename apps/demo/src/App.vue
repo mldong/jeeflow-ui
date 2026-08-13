@@ -66,7 +66,20 @@ const backends = [
 ]
 // 过滤出在线后端，取第一个作为默认
 const onlineBackends = backends.filter(b => !b.disabled)
-const backend = ref(localStorage.getItem('jeeflow_backend') || (onlineBackends[0]?.value || backends[0].value))
+
+// ── URL ?lang= 契约：website 各语言演示卡片携带 ?lang=xx，自动定位对应 Tab ──
+const LANG_MAP = { java: 'VITE_BACKEND_JAVA', go: 'VITE_BACKEND_GO', python: 'VITE_BACKEND_PYTHON', node: 'VITE_BACKEND_NODE', php: 'VITE_BACKEND_PHP' }
+const urlLang = new URLSearchParams(location.search).get('lang')
+const langBackend = urlLang && LANG_MAP[urlLang.toLowerCase()] ? import.meta.env[LANG_MAP[urlLang.toLowerCase()]] : ''
+const backend = ref(
+  (langBackend && backends.some(b => b.value === langBackend && !b.disabled))
+    ? langBackend
+    : localStorage.getItem('jeeflow_backend') || (onlineBackends[0]?.value || backends[0].value)
+)
+// URL lang 命中时同步写入 localStorage，保持后续切换一致
+if (langBackend && backends.some(b => b.value === langBackend && !b.disabled)) {
+  localStorage.setItem('jeeflow_backend', langBackend)
+}
 const currentUser = ref(localStorage.getItem('jeeflow_user') || 'user1')
 const userOpen = ref(false)
 const refreshTick = ref(0)
@@ -91,6 +104,11 @@ function switchBackend(v) {
   if (backend.value === v) return
   backend.value = v
   localStorage.setItem('jeeflow_backend', v)
+  // 同步更新 URL ?lang= 参数（不触发导航）
+  const entry = Object.entries(LANG_MAP).find(([, envKey]) => import.meta.env[envKey] === v)
+  const url = new URL(location.href)
+  if (entry) url.searchParams.set('lang', entry[0]); else url.searchParams.delete('lang')
+  history.replaceState(null, '', url.toString())
   refreshTick.value++
 }
 function switchUser(userId) {
