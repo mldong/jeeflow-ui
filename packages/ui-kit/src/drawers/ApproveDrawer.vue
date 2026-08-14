@@ -2,72 +2,87 @@
   <JfDrawer :visible="visible" :title="title" :width="width" @update:visible="emit('update:visible', $event)">
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else-if="task">
-      <!-- 发起表单只读回显（instanceExt：bizData + f_* 字段） -->
-      <template v-if="bizFields.length">
-        <h3 class="jf-section-title">申请信息</h3>
-        <div class="jf-biz-grid">
-          <div v-for="f in bizFields" :key="f.key" class="jf-biz-item">
-            <span class="jf-biz-label">{{ f.label }}</span>
-            <span class="jf-biz-value">{{ f.value }}</span>
-          </div>
+      <JfTabs v-model="activeKey" :tabs="tabs">
+        <!-- 详情 -->
+        <div v-show="activeKey === 'detail'">
+          <h3 v-if="parsedSchema || Object.keys(bizFormData).length" class="jf-section-title">申请信息</h3>
+          <SchemaForm
+            v-if="parsedSchema || Object.keys(bizFormData).length"
+            ref="bizFormRef"
+            v-model="bizFormData"
+            :schema="parsedSchema"
+            :field-labels="bizLabels"
+            :permissions="permMap"
+            :readonly="bizReadonly"
+            field-prefix="f_"
+          />
+
+          <component
+            :is="taskFormComponent"
+            v-if="taskFormComponent && !isFirstTaskNode"
+            v-model="formData"
+            v-bind="taskFormAttrs"
+          />
+
+          <template v-if="!readonly && isDoing">
+            <template v-if="isFirstTaskNode">
+              <JfInitiateExtras
+                :graph="graph"
+                v-model:cc-actors="ccActors"
+                v-model:next-operators="nextOperators"
+                v-model:apply-reason="applyReason"
+                v-model:attachment="attachment"
+              />
+              <div class="jf-approve-actions">
+                <button class="jf-btn jf-btn--primary" :disabled="submitting" @click="doReApply">重新提交</button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="jf-form-item">
+                <label class="jf-form-label">审批意见</label>
+                <textarea v-model="comment" class="jf-input" rows="3" placeholder="请输入审批意见（可选）"></textarea>
+              </div>
+              <JfInitiateExtras
+                :graph="graph"
+                :task-id="taskId"
+                v-model:cc-actors="ccActors"
+                v-model:next-operators="nextOperators"
+              />
+              <div class="jf-approve-actions">
+                <button v-if="hasBtn('AGREE')" class="jf-btn jf-btn--primary" :disabled="submitting" @click="doExecute(SubmitType.AGREE)">同意</button>
+                <button v-if="hasBtn('REJECT')" class="jf-btn jf-btn--danger" :disabled="submitting" @click="doExecute(SubmitType.REJECT)">拒绝</button>
+                <button v-if="hasBtn('ROLLBACK')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="doExecute(SubmitType.ROLLBACK)">退回上一步</button>
+                <button v-if="hasBtn('ROLLBACK_TO_OPERATOR')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="doExecute(SubmitType.ROLLBACK_TO_OPERATOR)">退回发起人</button>
+                <button v-if="hasBtn('COUNTERSIGN_DISAGREE')" class="jf-btn jf-btn--danger" :disabled="submitting" @click="doCountersignDisagree">会签拒绝</button>
+                <button v-if="hasBtn('JUMP')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="openJump">跳转</button>
+                <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="surrogateVisible = true">转办</button>
+                <button v-if="hasBtn('ADD_CANDIDATE')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="addCandidateVisible = true">加签</button>
+              </div>
+            </template>
+          </template>
         </div>
-      </template>
 
-      <!-- 流程图（上下文定位，含高亮） -->
-      <div v-if="task.jsonObject" class="jf-detail-graph">
-        <JfFlowViewer :graph-data="task.jsonObject" :high-light="highLight" height="280px" />
-      </div>
-
-      <!-- 办理表单（注册表 → __schema__ → tf_ 兜底）。
-           注册组件按契约仅传 task；SchemaForm 兜底另传 fieldLabels/readonly -->
-      <component
-        :is="formComponent"
-        v-if="formComponent"
-        v-model="formData"
-        v-bind="formExtraAttrs"
-      />
-
-      <template v-if="!readonly">
-        <!-- 审批意见（默认输入，随办理写入 tf_approvalComment） -->
-        <div class="jf-form-item">
-          <label class="jf-form-label">审批意见</label>
-          <textarea v-model="comment" class="jf-input" rows="3" placeholder="请输入审批意见（可选）"></textarea>
+        <!-- 流程图 -->
+        <div v-show="activeKey === 'flow'">
+          <div v-if="graph" class="jf-pane-flow">
+            <JfFlowViewer
+              :graph-data="graph"
+              :high-light="highLight"
+              :assignee-text-data="assigneeRows"
+              height="100%"
+            />
+          </div>
+          <div v-else class="jf-empty">暂无流程图</div>
         </div>
 
-        <!-- 更多选项：抄送人 / 下一节点处理人 -->
-        <details class="jf-more">
-          <summary>更多选项（抄送 / 下一节点处理人）</summary>
-          <div class="jf-form-item">
-            <label class="jf-form-label">办理时抄送（tf_ccActors）</label>
-            <JfUserPicker v-model="ccActors" :task-id="taskId" placeholder="搜索并选择抄送人" />
-          </div>
-          <div class="jf-form-item">
-            <label class="jf-form-label">预指派下一节点处理人（tf_nextNodeOperator）</label>
-            <JfUserPicker v-model="nextOperators" :task-id="taskId" placeholder="搜索并选择处理人" />
-          </div>
-        </details>
-
-        <!-- 审批操作 -->
-        <div class="jf-approve-actions">
-          <button class="jf-btn jf-btn--primary" :disabled="submitting" @click="doExecute(SubmitType.AGREE)">同意</button>
-          <button class="jf-btn jf-btn--danger" :disabled="submitting" @click="doExecute(SubmitType.REJECT)">拒绝</button>
-          <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="doExecute(SubmitType.ROLLBACK)">退回上一步</button>
-          <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="doExecute(SubmitType.ROLLBACK_TO_OPERATOR)">退回发起人</button>
-          <button
-            v-if="isCountersignTask"
-            class="jf-btn jf-btn--danger"
-            :disabled="submitting"
-            @click="doCountersignDisagree"
-          >会签拒绝</button>
-          <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="openJump">跳转</button>
-          <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="surrogateVisible = true">转办</button>
-          <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="addCandidateVisible = true">加签</button>
+        <!-- 审批记录 -->
+        <div v-show="activeKey === 'record'">
+          <JfApprovalRecord :records="records" />
         </div>
-      </template>
+      </JfTabs>
     </template>
     <div v-else class="jf-empty">任务不存在</div>
 
-    <!-- 跳转节点选择（打开时加载 jumpAbleTaskNameList） -->
     <JfDrawer v-model:visible="jumpVisible" title="跳转到节点" width="420px">
       <div v-if="jumpLoading" class="jf-loading">加载中...</div>
       <div v-else-if="jumpNodes.length" class="jf-list">
@@ -78,9 +93,12 @@
       <div v-else class="jf-empty">无可跳转节点</div>
     </JfDrawer>
 
-    <!-- 转办/加签（人员选择器） -->
-    <JfDrawer :title="surrogateVisible ? '转办（指定处理人）' : '加签（追加参与人）'" :visible="surrogateVisible || addCandidateVisible" width="480px"
-      @update:visible="surrogateVisible = $event; addCandidateVisible = $event">
+    <JfDrawer
+      :title="surrogateVisible ? '转办（指定处理人）' : '加签（追加参与人）'"
+      :visible="surrogateVisible || addCandidateVisible"
+      width="480px"
+      @update:visible="surrogateVisible = $event; addCandidateVisible = $event"
+    >
       <div class="jf-form-item">
         <label class="jf-form-label">选择用户</label>
         <JfUserPicker v-model="actorIds" :task-id="taskId" placeholder="搜索姓名/工号" />
@@ -97,12 +115,21 @@
 import { ref, computed, watch } from 'vue'
 import type { Component } from 'vue'
 import JfDrawer from '../ui/JfDrawer.vue'
+import JfTabs from '../ui/JfTabs.vue'
 import JfFlowViewer from '../ui/JfFlowViewer.vue'
 import JfUserPicker from '../ui/JfUserPicker.vue'
+import JfApprovalRecord from '../ui/JfApprovalRecord.vue'
+import JfInitiateExtras from '../ui/JfInitiateExtras.vue'
 import { SchemaForm } from '../form-registry'
 import { useJeeflowUi } from '../provider'
 import { SubmitType } from '../types'
-import type { TaskDetail, JumpableTaskRow, HighLightData } from '../types'
+import type { TaskDetail, JumpableTaskRow, HighLightData, ApprovalRecordRow, AssigneeTextRow } from '../types'
+import {
+  parseSchema, buildPermissionMap, findTaskNode, firstTaskNode,
+  resolveActionBtns, isBuiltinSchemaFormKey,
+  schemaFieldLabels, extractBizFormData, type ActionBtnKey,
+} from '../helpers'
+import { toast } from '../toast'
 
 defineOptions({ name: 'JfApproveDrawer' })
 
@@ -111,11 +138,10 @@ const props = withDefaults(defineProps<{
   taskId: string | null
   width?: string
   readonly?: boolean
-}>(), { width: '820px', readonly: false })
+}>(), { width: '60%', readonly: false })
 
 const emit = defineEmits<{
   'update:visible': [v: boolean]
-  /** 办理成功后列表刷新 */
   changed: []
 }>()
 
@@ -124,9 +150,14 @@ const { api, getForm } = useJeeflowUi()
 const loading = ref(false)
 const task = ref<TaskDetail | null>(null)
 const highLight = ref<HighLightData | null>(null)
+const records = ref<ApprovalRecordRow[]>([])
+const assigneeRows = ref<AssigneeTextRow[]>([])
 const formData = ref<Record<string, any>>({})
+const bizFormData = ref<Record<string, any>>({})
 const comment = ref('')
 const submitting = ref(false)
+const activeKey = ref('detail')
+const bizFormRef = ref<any>(null)
 
 const jumpVisible = ref(false)
 const jumpLoading = ref(false)
@@ -137,56 +168,65 @@ const actorIds = ref<string[]>([])
 const actorSaving = ref(false)
 const ccActors = ref<string[]>([])
 const nextOperators = ref<string[]>([])
+const applyReason = ref('')
+const attachment = ref('')
+
+const tabs = [
+  { key: 'detail', label: '详情' },
+  { key: 'flow', label: '流程图' },
+  { key: 'record', label: '审批记录' },
+]
 
 const title = computed(() => (task.value ? `办理：${task.value.displayName}` : '办理任务'))
-
-/** 会签任务（performType=1）才显示"会签拒绝" */
-const isCountersignTask = computed(() => task.value?.performType === 1)
-
-const formKey = computed(() => task.value?.formKey ?? '')
-const fieldLabels = computed(() => {
-  const labels: Record<string, string> = {}
-  for (const f of (task.value?.jsonObject as any)?.__schema__?.fields ?? []) {
-    if (f?.key) labels[f.key] = f.label || f.key
-  }
-  return labels
-})
-
-/** 发起表单只读回显：instanceExt（对象）→ instanceVariable（JSON 串）兜底 */
-const bizFields = computed<Array<{ key: string; label: string; value: string }>>(() => {
+const graph = computed(() => (task.value?.jsonObject as Record<string, any>) || null)
+const isDoing = computed(() => task.value?.taskState === 10)
+const isFirstTaskNode = computed(() => {
   const t = task.value as any
-  if (!t) return []
-  let vars: Record<string, any> | null = null
-  if (t.instanceExt && typeof t.instanceExt === 'object') vars = t.instanceExt
-  else if (typeof t.instanceVariable === 'string') {
-    try { vars = JSON.parse(t.instanceVariable) } catch { vars = null }
-  }
-  if (!vars) return []
-  const out: Array<{ key: string; label: string; value: string }> = []
-  const biz = vars.bizData
-  if (biz && typeof biz === 'object') {
-    for (const [k, v] of Object.entries(biz)) {
-      if (v == null || v === '') continue
-      out.push({ key: `biz_${k}`, label: k, value: String(v) })
-    }
-  }
-  for (const [k, v] of Object.entries(vars)) {
-    if (!k.startsWith('f_') || v == null || v === '') continue
-    out.push({ key: k, label: k.slice(2), value: String(v) })
-  }
-  return out
+  if (t?.ext?.isFirstTaskNode || t?.isFirstTaskNode) return true
+  const first = firstTaskNode(graph.value)
+  return Boolean(first && (first.id === t?.taskName || first.properties?.name === t?.taskName))
+})
+const currentTaskNode = computed(() => {
+  const t = task.value
+  if (!t) return null
+  return findTaskNode(graph.value, t.taskName)
+    || { properties: { ...(t as any).taskModel, field: (t as any).taskModel?.ext || (t as any).taskModel?.field } }
+})
+const parsedSchema = computed(() => parseSchema(graph.value))
+const permMap = computed(() =>
+  buildPermissionMap(graph.value, currentTaskNode.value, parsedSchema.value?.columns))
+const bizLabels = computed(() => schemaFieldLabels(graph.value))
+const actionBtns = computed(() =>
+  resolveActionBtns(currentTaskNode.value, task.value?.performType))
+const bizReadonly = computed(() => {
+  if (props.readonly || !isDoing.value) return true
+  if (isFirstTaskNode.value) return false
+  // 启用字段权限时审批节点也可按 PERMISSION_* 编辑
+  return !graph.value?.enableFieldPerm
 })
 
-const formComponent = computed<Component | null>(() => {
-  if (!formKey.value) return null
-  const registered = getForm(formKey.value, 'approve')
+function hasBtn(k: ActionBtnKey): boolean {
+  return actionBtns.value.includes(k)
+}
+
+const taskFormKey = computed(() => task.value?.formKey ?? '')
+const taskFormComponent = computed<Component | null>(() => {
+  if (!taskFormKey.value || isBuiltinSchemaFormKey(taskFormKey.value)) {
+    return parsedSchema.value ? SchemaForm : null
+  }
+  const registered = getForm(taskFormKey.value, 'approve')
   if (registered) return registered
-  return SchemaForm
+  return parsedSchema.value ? SchemaForm : null
 })
-// 注册组件按契约仅传 task；SchemaForm 兜底传 fieldLabels/readonly（避免 fallthrough 覆盖注册组件内部绑定）
-const formExtraAttrs = computed(() =>
-  formComponent.value === SchemaForm
-    ? { fieldLabels: fieldLabels.value, readonly: props.readonly }
+const taskFormAttrs = computed(() =>
+  taskFormComponent.value === SchemaForm
+    ? {
+        schema: parsedSchema.value,
+        fieldLabels: bizLabels.value,
+        permissions: permMap.value,
+        readonly: props.readonly,
+        fieldPrefix: 'tf_',
+      }
     : { task: task.value })
 
 watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
@@ -194,25 +234,43 @@ watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
   loading.value = true
   task.value = null
   highLight.value = null
+  records.value = []
+  assigneeRows.value = []
   formData.value = {}
+  bizFormData.value = {}
   comment.value = ''
   actorIds.value = []
   ccActors.value = []
   nextOperators.value = []
+  applyReason.value = ''
+  attachment.value = ''
+  activeKey.value = 'detail'
   try {
     task.value = await api.processTask.detail(id)
-    // 流程高亮（与待办详情一致；失败不阻塞办理）
-    try {
-      highLight.value = await api.processInstance.highLight(task.value.processInstanceId)
-    } catch {
-      highLight.value = null
+    bizFormData.value = extractBizFormData(task.value)
+    const instId = task.value.processInstanceId
+    const jobs: Promise<void>[] = [
+      api.processInstance.highLight(instId).then((hl) => { highLight.value = hl }).catch(() => { highLight.value = null }),
+      api.processInstance.approvalRecord(instId).then((rec) => { records.value = rec }).catch(() => { records.value = [] }),
+      api.processInstance.getAssigneeTextData(instId).then((rows) => { assigneeRows.value = rows }).catch(() => { assigneeRows.value = [] }),
+    ]
+    if (!Object.keys(bizFormData.value).length) {
+      jobs.push(
+        api.processInstance.detail(instId).then((d) => {
+          if (!task.value?.jsonObject && d.jsonObject) {
+            (task.value as any).jsonObject = d.jsonObject
+          }
+          const more = extractBizFormData(d)
+          if (Object.keys(more).length) bizFormData.value = more
+        }).catch(() => {}),
+      )
     }
+    await Promise.all(jobs)
   } finally {
     loading.value = false
   }
 }, { immediate: true })
 
-/** 打开跳转抽屉时加载可跳转节点（修复：此前恒为空） */
 async function openJump() {
   jumpVisible.value = true
   jumpNodes.value = []
@@ -227,32 +285,58 @@ async function openJump() {
   }
 }
 
+function collectTf(): Record<string, unknown> {
+  const tf: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(formData.value)) {
+    if (v === '' || v == null) continue
+    tf[k.startsWith('tf_') ? k : `tf_${k}`] = v
+  }
+  if (comment.value.trim() && !('tf_approvalComment' in tf)) {
+    tf.tf_approvalComment = comment.value.trim()
+  }
+  if (ccActors.value.length) tf.tf_ccActors = ccActors.value
+  if (nextOperators.value.length) tf.tf_nextNodeOperator = nextOperators.value
+  return tf
+}
+
+function collectBiz(): Record<string, unknown> {
+  const form: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(bizFormData.value)) {
+    if (v === '' || v == null) continue
+    form[k.startsWith('f_') ? k : `f_${k}`] = v
+  }
+  if (ccActors.value.length) form.f_ccActors = ccActors.value
+  if (nextOperators.value.length) form.f_nextNodeOperator = nextOperators.value
+  if (applyReason.value.trim()) form.f_applyReason = applyReason.value.trim()
+  if (attachment.value) form.f_attachment = attachment.value
+  return form
+}
+
 async function doExecute(submitType: number, extra: Record<string, unknown> = {}) {
   if (!props.taskId) return
   submitting.value = true
   try {
-    // tf_ 表单数据 → 任务变量（无前缀自动加 tf_）
-    const tf: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(formData.value)) {
-      if (v === '' || v == null) continue
-      tf[k.startsWith('tf_') ? k : `tf_${k}`] = v
-    }
-    // 审批意见（默认输入框）
-    if (comment.value.trim() && !('tf_approvalComment' in tf)) {
-      tf.tf_approvalComment = comment.value.trim()
-    }
-    // 抄送 / 下一节点预指派
-    if (ccActors.value.length) tf.tf_ccActors = ccActors.value
-    if (nextOperators.value.length) tf.tf_nextNodeOperator = nextOperators.value
-    await api.processTask.execute(props.taskId, submitType as any, { ...tf, ...extra })
+    const extraForm = (!isFirstTaskNode.value && graph.value?.enableFieldPerm) ? collectBiz() : {}
+    await api.processTask.execute(props.taskId, submitType as any, { ...collectTf(), ...extraForm, ...extra })
+    toast.success('办理成功')
     emit('changed')
     emit('update:visible', false)
+  } catch (e) {
+    toast.error((e as Error).message || '办理失败')
   } finally {
     submitting.value = false
   }
 }
 
-/** 会签拒绝：submitType=20 + countersignDisagreeFlag */
+async function doReApply() {
+  const err = bizFormRef.value?.validate?.()
+  if (err) {
+    toast.error(err)
+    return
+  }
+  await doExecute(SubmitType.RE_APPLY, collectBiz())
+}
+
 function doCountersignDisagree() {
   return doExecute(SubmitType.COUNTERSIGN_DISAGREE, { countersignDisagreeFlag: true })
 }
@@ -277,18 +361,3 @@ async function doActors() {
   }
 }
 </script>
-
-<style scoped>
-.jf-approve-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.jf-biz-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px;
-  padding: 12px; background: var(--jf-hover-bg, #fafbfc); border-radius: 8px; margin-bottom: 12px;
-}
-.jf-biz-item { display: flex; flex-direction: column; min-width: 0; }
-.jf-biz-label { font-size: 12px; color: #999; }
-.jf-biz-value { font-size: 13px; color: var(--jf-text, #1f1f1f); word-break: break-all; }
-.jf-more { margin: 8px 0; font-size: 13px; }
-.jf-more summary { cursor: pointer; color: var(--jf-primary, #1677ff); user-select: none; }
-.jf-more[open] { padding-bottom: 4px; }
-textarea.jf-input { resize: vertical; font-family: inherit; }
-</style>

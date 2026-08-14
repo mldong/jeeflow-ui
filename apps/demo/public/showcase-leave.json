@@ -1,0 +1,157 @@
+{
+  "name": "showcase-leave",
+  "displayName": "请假审批（演示）",
+  "type": "leave",
+  "instanceUrl": "SchemaWfForm",
+  "enableFieldPerm": 1,
+  "enableCcActors": 1,
+  "enableApplyReason": 1,
+  "selectUserOnInitiate": 0,
+  "enableAttachment": 0,
+  "__schema__": {
+    "ext": { "layout": "horizontal" },
+    "columns": [
+      {
+        "fieldName": "reason",
+        "fieldCamelName": "reason",
+        "remark": "请假事由",
+        "component": "Textarea",
+        "dataType": "1",
+        "ext": { "span": 24, "required": 1, "placeholder": "请填写请假事由" }
+      },
+      {
+        "fieldName": "days",
+        "fieldCamelName": "days",
+        "remark": "请假天数",
+        "component": "InputNumber",
+        "dataType": "12",
+        "ext": { "span": 12, "required": 1, "placeholder": "天数" }
+      },
+      {
+        "fieldName": "leaveType",
+        "fieldCamelName": "leaveType",
+        "remark": "请假类型",
+        "component": "Select",
+        "dataType": "1",
+        "ext": {
+          "span": 12,
+          "required": 1,
+          "placeholder": "请选择类型",
+          "options": [
+            { "label": "年假", "value": "annual" },
+            { "label": "事假", "value": "personal" },
+            { "label": "病假", "value": "sick" }
+          ]
+        }
+      },
+      {
+        "fieldName": "startDate",
+        "fieldCamelName": "startDate",
+        "remark": "开始日期",
+        "component": "DatePicker",
+        "dataType": "1",
+        "ext": { "span": 12, "required": 1 }
+      },
+      {
+        "fieldName": "endDate",
+        "fieldCamelName": "endDate",
+        "remark": "结束日期",
+        "component": "DatePicker",
+        "dataType": "1",
+        "ext": { "span": 12, "required": 1 }
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "type": "snaker:start",
+      "x": 80,
+      "y": 200,
+      "properties": { "width": 50, "height": 50 },
+      "text": { "value": "开始" }
+    },
+    {
+      "id": "apply",
+      "type": "snaker:task",
+      "x": 220,
+      "y": 200,
+      "properties": {
+        "width": 120,
+        "height": 50,
+        "form": "SchemaWfForm",
+        "assignee": "applicant",
+        "taskType": 0,
+        "performType": 0,
+        "field": {
+          "PERMISSION_f_reason": 2,
+          "PERMISSION_f_days": 2,
+          "PERMISSION_f_leaveType": 2,
+          "PERMISSION_f_startDate": 2,
+          "PERMISSION_f_endDate": 2
+        }
+      },
+      "text": { "value": "发起申请" }
+    },
+    {
+      "id": "leader",
+      "type": "snaker:task",
+      "x": 400,
+      "y": 200,
+      "properties": {
+        "width": 120,
+        "height": 50,
+        "form": "SchemaWfForm",
+        "assignee": "leader",
+        "taskType": 0,
+        "performType": 0,
+        "actionBtns": ["AGREE", "REJECT", "ROLLBACK_TO_OPERATOR"],
+        "field": {
+          "PERMISSION_f_reason": 1,
+          "PERMISSION_f_days": 1,
+          "PERMISSION_f_leaveType": 3,
+          "PERMISSION_f_startDate": 1,
+          "PERMISSION_f_endDate": 1
+        }
+      },
+      "text": { "value": "上级审批" }
+    },
+    {
+      "id": "manager",
+      "type": "snaker:task",
+      "x": 580,
+      "y": 200,
+      "properties": {
+        "width": 120,
+        "height": 50,
+        "form": "SchemaWfForm",
+        "assignee": "manager",
+        "taskType": 0,
+        "performType": 0,
+        "actionBtns": ["AGREE", "REJECT", "ROLLBACK", "ROLLBACK_TO_OPERATOR", "JUMP"],
+        "field": {
+          "PERMISSION_f_reason": 1,
+          "PERMISSION_f_days": 1,
+          "PERMISSION_f_leaveType": 1,
+          "PERMISSION_f_startDate": 1,
+          "PERMISSION_f_endDate": 1
+        }
+      },
+      "text": { "value": "经理审批" }
+    },
+    {
+      "id": "end",
+      "type": "snaker:end",
+      "x": 760,
+      "y": 200,
+      "properties": { "width": 50, "height": 50 },
+      "text": { "value": "结束" }
+    }
+  ],
+  "edges": [
+    { "id": "e0", "sourceNodeId": "start", "targetNodeId": "apply", "properties": {} },
+    { "id": "e1", "sourceNodeId": "apply", "targetNodeId": "leader", "properties": {} },
+    { "id": "e2", "sourceNodeId": "leader", "targetNodeId": "manager", "properties": {} },
+    { "id": "e3", "sourceNodeId": "manager", "targetNodeId": "end", "properties": {} }
+  ]
+}

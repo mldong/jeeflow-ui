@@ -31,8 +31,10 @@ const emit = defineEmits(['update:visible', 'close'])
 
 const show = ref(false)
 const opening = ref(false)
+const closing = ref(false)
 
 function open() {
+  closing.value = false
   show.value = true
   document.body.style.overflow = 'hidden'
   requestAnimationFrame(() => {
@@ -41,9 +43,12 @@ function open() {
 }
 
 function close() {
+  if (!show.value || closing.value) return
+  closing.value = true
   opening.value = false
   setTimeout(() => {
     show.value = false
+    closing.value = false
     document.body.style.overflow = ''
     emit('update:visible', false)
     emit('close')
@@ -58,7 +63,7 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') close()
 }
 
-watch(() => props.visible, (v) => { if (v) open() }, { immediate: true })
+watch(() => props.visible, (v) => { if (v) open(); else close() }, { immediate: true })
 
 onMounted(() => document.addEventListener('keydown', handleKeydown))
 onBeforeUnmount(() => { document.removeEventListener('keydown', handleKeydown); document.body.style.overflow = '' })

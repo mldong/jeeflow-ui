@@ -24,6 +24,9 @@ export { default as JfBadge } from './ui/JfBadge.vue'
 export { default as JfFlowViewer } from './ui/JfFlowViewer.vue'
 export { default as JfUserPicker } from './ui/JfUserPicker.vue'
 export { default as JfIcon } from './ui/JfIcon.vue'
+export { default as JfTabs } from './ui/JfTabs.vue'
+export { default as JfApprovalRecord } from './ui/JfApprovalRecord.vue'
+export { default as JfInitiateExtras } from './ui/JfInitiateExtras.vue'
 
 // 布局
 export { default as JfLayout } from './layout/JfLayout.vue'

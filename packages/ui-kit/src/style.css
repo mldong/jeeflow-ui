@@ -128,3 +128,54 @@
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+textarea.jf-input { resize: vertical; font-family: inherit; }
+
+/* SchemaForm */
+.jf-schema-form { display: flex; flex-wrap: wrap; gap: 0 16px; }
+.jf-schema-form .jf-form-item { width: 100%; }
+.jf-req { color: var(--jf-danger, #ff4d4f); margin-left: 2px; }
+.jf-form-error { font-size: 12px; color: var(--jf-danger, #ff4d4f); margin-top: 4px; }
+.jf-input:disabled, textarea.jf-input:disabled, select.jf-input:disabled {
+  background: var(--jf-hover, #f5f7fa); color: var(--jf-text-2, #4b5563); cursor: not-allowed;
+}
+
+/* Tabs */
+.jf-tabs { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.jf-tabs__nav {
+  display: flex; gap: 4px; border-bottom: 1px solid var(--jf-border, #e8eaed);
+  flex-shrink: 0; margin-bottom: 12px;
+}
+.jf-tabs__tab {
+  padding: 8px 16px; border: none; background: transparent; cursor: pointer;
+  font-size: 14px; color: var(--jf-text-2, #4b5563); border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.jf-tabs__tab:hover { color: var(--jf-primary, #1677ff); }
+.jf-tabs__tab--active {
+  color: var(--jf-primary, #1677ff); font-weight: 600;
+  border-bottom-color: var(--jf-primary, #1677ff);
+}
+.jf-tabs__body { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* Timeline */
+.jf-timeline { list-style: none; margin: 0; padding: 0 0 0 12px; }
+.jf-timeline__item {
+  position: relative; padding: 0 0 16px 20px;
+  border-left: 2px solid var(--jf-border, #e8eaed);
+}
+.jf-timeline__item:last-child { border-left-color: transparent; padding-bottom: 0; }
+.jf-timeline__dot {
+  position: absolute; left: -7px; top: 4px; width: 12px; height: 12px;
+  border-radius: 50%; background: #d9d9d9; border: 2px solid #fff;
+}
+.jf-timeline__dot--doing { background: #faad14; }
+.jf-timeline__dot--done { background: #52c41a; }
+.jf-timeline__dot--reject { background: #ff4d4f; }
+.jf-timeline__dot--info { background: #1677ff; }
+.jf-timeline__head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.jf-timeline__meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; font-size: 13px; }
+
+/* Drawer tab panes */
+.jf-pane-flow { height: min(52vh, 480px); min-height: 280px; border: 1px solid var(--jf-border, #f0f0f0); border-radius: 8px; overflow: hidden; }
+.jf-approve-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }

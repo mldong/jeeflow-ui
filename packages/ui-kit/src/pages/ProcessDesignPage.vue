@@ -9,6 +9,8 @@
         @keyup.enter="goSearch"
       />
       <button v-if="can(['wf:processDesign:save'])" class="jf-btn jf-btn--primary jf-btn--sm" @click="createNew">＋ 新建流程</button>
+      <button v-if="can(['wf:processDesign:save'])" class="jf-btn jf-btn--ghost jf-btn--sm" title="导入 LogicFlow JSON（演示稿：/showcase-leave.json）" @click="triggerImport">导入 JSON</button>
+      <input ref="importInput" type="file" accept="application/json" style="display:none" @change="importJson" />
     </h2>
 
     <!-- 设计列表 -->
@@ -108,6 +110,29 @@ const designName = ref('')
 const designDisplayName = ref('')
 const designJson = ref<any>(null)
 const saving = ref(false)
+const importInput = ref<HTMLInputElement | null>(null)
+
+function triggerImport() {
+  importInput.value?.click()
+}
+
+async function importJson(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  ;(e.target as HTMLInputElement).value = ''
+  if (!file) return
+  try {
+    const json = JSON.parse(await file.text())
+    if (!json || typeof json !== 'object') throw new Error('不是有效的流程 JSON')
+    design.value = { id: '', name: json.name || '', displayName: json.displayName || '', type: json.type || 'approval', isDeployed: 0, jsonObject: json }
+    designName.value = json.name || 'imported'
+    designDisplayName.value = json.displayName || '导入流程'
+    designJson.value = json
+    designing.value = true
+    toast.success('已导入设计稿，请保存并发布')
+  } catch (err) {
+    toast.error((err as Error).message || '导入失败')
+  }
+}
 
 async function reload() {
   loading.value = true

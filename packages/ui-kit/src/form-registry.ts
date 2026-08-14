@@ -13,11 +13,10 @@
  * 组件约定（props 契约）：
  *  - 发起/详情：modelValue（f_ 表单数据）、defineId、instanceId
  *  - 办理页：额外 task（TaskRow）、submitType 由宿主触发
- * 未注册的 formKey：渲染内置 SchemaForm 兜底（f_ 字段按字段名自动渲染输入框）。
+ * 未注册的 formKey：渲染内置 SchemaForm（__schema__.columns + 组件类型/必填/字段权限）。
  */
 
-import type { Component, Ref } from 'vue'
-import { shallowRef } from 'vue'
+import type { Component } from 'vue'
 
 export interface FormOptions {
   /** 表单用途：start=发起 / approve=办理 / detail=详情（不传则三种都匹配） */
@@ -49,44 +48,5 @@ export function createFormRegistry(): FormRegistry {
   return { register, get, has: (k) => forms.has(k), keys: () => [...forms.keys()] }
 }
 
-// ── 内置 SchemaForm 兜底（阶段 0 骨架：仅按 f_ 字段名渲染输入框）────────────
-// 阶段 2 升级为完整 JSON Schema 渲染（types/必填/选择/日期等）
-
-import { defineComponent, h } from 'vue'
-
-export const SchemaForm = defineComponent({
-  name: 'JeeflowSchemaForm',
-  props: {
-    modelValue: { type: Object as () => Record<string, any>, default: () => ({}) },
-    /** 字段提示：{ 'f_reason': '事由', 'f_amount': '申请金额' } */
-    fieldLabels: { type: Object as () => Record<string, string>, default: () => ({}) },
-  },
-  emits: ['update:modelValue'],
-  setup(props, { emit }) {
-    const form = shallowRef({ ...props.modelValue })
-    function set(key: string, val: unknown) {
-      form.value[key] = val
-      emit('update:modelValue', { ...form.value })
-    }
-    return () => {
-      // 字段集：labels 键 ∪ 已填值的 modelValue 键（空值 f_ 字段也渲染）
-      const labels = props.fieldLabels
-      const keys = Array.from(new Set([
-        ...Object.keys(labels),
-        ...Object.keys(props.modelValue).filter((k) => props.modelValue[k] !== '' && props.modelValue[k] != null),
-      ]))
-      return h('div', { class: 'jf-schema-form' },
-        keys.map((k) => {
-          const label = labels[k] ?? k.replace(/^f_/, '')
-          return h('div', { class: 'jf-form-item', key: k }, [
-            h('label', { class: 'jf-form-label' }, label),
-            h('input', {
-              class: 'jf-form-input',
-              value: props.modelValue[k] ?? '',
-              onInput: (e: Event) => set(k, (e.target as HTMLInputElement).value),
-            }),
-          ])
-        }))
-    }
-  },
-})
+// ── 内置 SchemaForm：按 __schema__.columns 渲染（兼容 fields / fieldLabels 回退）
+export { default as SchemaForm } from './ui/JfSchemaForm.vue'
