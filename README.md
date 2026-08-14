@@ -80,7 +80,7 @@ cd apps/embed && pnpm dev      # 默认 :5176；public/host.html 为宿主示例
 
 能力边界、Vue 整页/拆组件、iframe、adapters：**以文档站为准**（npm 发布前也可按此对照源码）。
 
-- 文档：[指南 13 · jeeflow-ui 流程中心](https://jeeflow-doc.mldong.com/guides/13-jeeflow-ui/)（站点更新后生效）
+- 文档：[指南 13 · jeeflow-ui 流程中心](https://jeeflow-doc.mldong.com/guides/13-jeeflow-ui)（文档站 v1.8.17 已上线）
 - 源码样板：`apps/demo`（同栈）、`apps/embed`（iframe）
 
 `@mldong/jeeflow-ui` **尚未发布到 npm**，不要 `pnpm add`。需要本地试：clone 本仓 `pnpm install && pnpm dev`。
