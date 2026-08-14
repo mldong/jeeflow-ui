@@ -5,27 +5,30 @@
  *
  * ```
  * <JeeflowUiProvider :config="{
- *   baseUrl: '/api',            // 后端门面地址
- *   getToken: () => store.token, // 登录态
- *   getOperator: () => store.userId,   // 当前用户 → 门面 operator
- *   hasPermission: (codes) => ...      // 权限码 → 按钮显隐
+ *   baseUrl: '/api',
+ *   getToken: () => store.token,
+ *   getOperator: () => store.userId,
+ *   hasPermission: (codes) => ...,
+ *   adapters: { listUsers, getDict, upload },
  * }">
  *   <App />
  * </JeeflowUiProvider>
  * ```
  *
- * 提供：api（40 action）/ can（权限码）/ registerForm（表单注册表）。
+ * 提供：api（40 action）/ can / adapters / registerForm。
  * 未使用 Vue 的宿主可直接用 createJeeflowApi（api.ts）。
  */
 
-import { defineComponent, h, inject, provide, reactive } from 'vue'
-import type { Component, PropType } from 'vue'
+import { defineComponent, inject, provide } from 'vue'
+import type { PropType } from 'vue'
 import { createJeeflowApi } from './api'
 import type { JeeflowApiConfig, JeeflowApi, JeeflowCan } from './api'
+import { JeeflowUiKey, resolveAdapters } from './adapters'
+import type { JeeflowHostAdapters } from './adapters'
 import { createFormRegistry } from './form-registry'
 import type { FormRegistry } from './form-registry'
 
-export const JeeflowUiKey = Symbol('jeeflow-ui')
+export { JeeflowUiKey }
 
 export interface JeeflowUiContext {
   api: JeeflowApi
@@ -33,6 +36,8 @@ export interface JeeflowUiContext {
   registerForm: FormRegistry['register']
   getForm: FormRegistry['get']
   config: JeeflowApiConfig
+  /** 已解析（含顶层 listUsers 回退） */
+  adapters: JeeflowHostAdapters
 }
 
 export function createJeeflowUi(config: JeeflowApiConfig): JeeflowUiContext {
@@ -43,6 +48,7 @@ export function createJeeflowUi(config: JeeflowApiConfig): JeeflowUiContext {
     registerForm: registry.register.bind(registry),
     getForm: registry.get.bind(registry),
     config,
+    adapters: resolveAdapters(config),
   }
 }
 

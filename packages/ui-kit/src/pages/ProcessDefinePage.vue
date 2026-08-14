@@ -49,7 +49,7 @@
     </template>
 
     <!-- 定义详情：基本信息 + 流程图弹性铺满 -->
-    <JfDrawer v-model:visible="detailVisible" :title="detail?.displayName || '流程详情'" width="820px">
+    <JfDrawer v-model:visible="detailVisible" :title="detail?.displayName || '流程详情'" width="820px" fill>
       <div v-if="detail" class="jf-detail-body">
         <div class="jf-define-meta">
           <div class="jf-define-meta-item"><span class="jf-muted">编码</span><strong>{{ detail.name }}</strong></div>

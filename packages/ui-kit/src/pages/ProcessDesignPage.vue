@@ -1,5 +1,5 @@
 <template>
-  <div class="jf-page jf-page--full">
+  <div class="jf-page jf-page--full" :class="{ 'jf-page--designing': designing }">
     <h2 class="jf-page-title">
       <JfIcon name="design" :size="18" /> 流程设计
       <input

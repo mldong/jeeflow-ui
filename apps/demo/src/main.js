@@ -4,7 +4,7 @@ import { createJeeflowUi, JeeflowUiKey } from '@mldong/jeeflow-ui'
 import ApplyForm from './forms/apply-form.vue'
 import ExpenseForm from './forms/expense-form.vue'
 
-// 演示用户（与四后端同一套 8 个具名用户，JfUserPicker 无任务上下文时从此检索）
+// 演示用户（与四后端同一套 8 个具名用户）
 export const DEMO_USERS = [
   { userId: 'user1', realName: '张三', deptName: '研发部', postName: '工程师' },
   { userId: 'userA', realName: '孙倩', deptName: '研发部', postName: '工程师' },
@@ -16,6 +16,32 @@ export const DEMO_USERS = [
   { userId: 'boss', realName: '钱七', deptName: '研发部', postName: '总经理' },
 ]
 
+const DEMO_ROLES = [
+  { roleId: 'engineer', roleName: '工程师' },
+  { roleId: 'leader', roleName: '组长' },
+  { roleId: 'manager', roleName: '经理' },
+  { roleId: 'director', roleName: '总监' },
+]
+
+const DEMO_DICTS = {
+  wf_leave_type: [
+    { value: 'annual', label: '年假' },
+    { value: 'sick', label: '病假' },
+    { value: 'personal', label: '事假' },
+  ],
+  wf_process_type: [
+    { value: 'oa', label: 'OA' },
+    { value: 'hr', label: '人事' },
+    { value: 'finance', label: '财务' },
+  ],
+}
+
+function filterByKw(list, keyword, keys) {
+  const kw = (keyword || '').trim().toLowerCase()
+  if (!kw) return list
+  return list.filter((row) => keys.some((k) => String(row[k] || '').toLowerCase().includes(kw)))
+}
+
 // 创建流程中心上下文（非组件形式注入：注册表在注入前可用，iframe 壳同款用法）
 const jeeflowUi = createJeeflowUi({
   // 懒求值：切换后端只改 localStorage，api 每次请求取最新（SPA 热切换，无需 reload）
@@ -24,12 +50,13 @@ const jeeflowUi = createJeeflowUi({
   getOperator: () => localStorage.getItem('jeeflow_user') || 'user1',
   getToken: () => null,
   hasPermission: () => true, // demo 无权限体系：全放行（宿主接入时按 wf:{action} 权限码判断）
-  // 用户搜索源：转办/抄送/委托等无 taskId 的选人场景（demo 在 8 个用户内检索）
-  listUsers: async (keyword) => {
-    const kw = (keyword || '').trim().toLowerCase()
-    if (!kw) return DEMO_USERS
-    return DEMO_USERS.filter((u) =>
-      u.userId.toLowerCase().includes(kw) || u.realName.includes(kw))
+  adapters: {
+    listUsers: async (keyword) => filterByKw(DEMO_USERS, keyword, ['userId', 'realName']),
+    getUsersByIds: async (ids) => DEMO_USERS.filter((u) => ids.includes(u.userId)),
+    listRoles: async (keyword) => filterByKw(DEMO_ROLES, keyword, ['roleId', 'roleName']),
+    getDict: async (code) => DEMO_DICTS[code] || [],
+    // demo 无真实存储：返回可识别的占位 path（宿主应上传后回真实 url）
+    upload: async (file) => `demo://${file.name}`,
   },
 })
 

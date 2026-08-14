@@ -5,6 +5,7 @@
       <JfUserPicker
         :model-value="nextOperators"
         :task-id="taskId"
+        scene="nextOperator"
         :disabled="disabled"
         placeholder="搜索并选择处理人"
         @update:model-value="emit('update:nextOperators', $event)"
@@ -15,6 +16,7 @@
       <JfUserPicker
         :model-value="ccActors"
         :task-id="taskId"
+        scene="cc"
         :disabled="disabled"
         placeholder="搜索并选择抄送人"
         @update:model-value="emit('update:ccActors', $event)"
@@ -48,6 +50,7 @@
 import { computed } from 'vue'
 import JfUserPicker from './JfUserPicker.vue'
 import { initiateExtraFlags } from '../helpers'
+import { useJeeflowUi } from '../provider'
 
 defineOptions({ name: 'JfInitiateExtras' })
 
@@ -77,9 +80,22 @@ const emit = defineEmits<{
 }>()
 
 const flags = computed(() => initiateExtraFlags(props.graph))
+const { adapters } = useJeeflowUi()
 
-function onFile(e: Event) {
+async function onFile(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
-  emit('update:attachment', file?.name || '')
+  if (!file) {
+    emit('update:attachment', '')
+    return
+  }
+  if (adapters.upload) {
+    try {
+      emit('update:attachment', await adapters.upload(file))
+    } catch {
+      emit('update:attachment', file.name)
+    }
+  } else {
+    emit('update:attachment', file.name)
+  }
 }
 </script>

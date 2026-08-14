@@ -12,6 +12,7 @@ import type {
   HighLightData, ApprovalRecordRow, DesignRow, ListByTypeItem, SurrogateRow,
   CandidateRow, JumpableTaskRow, AssigneeTextRow, SubmitTypeValue,
 } from './types'
+import type { JeeflowHostAdapters, JeeflowUserRow } from './adapters'
 
 // ── 配置 ──────────────────────────────────────────────────────────────────
 
@@ -25,9 +26,16 @@ export interface JeeflowApiConfig {
   getToken?: () => string | null
   /** 权限码判断器（可选）：宿主按 wf:{action} 权限码控制按钮显隐 */
   hasPermission?: (codes: string[]) => boolean
-  /** 用户搜索源（可选）：无任务上下文的选人场景（转办/抄送/委托）依赖；
-   *  有 taskId 时 JfUserPicker 优先走 candidatePage，未传则用此钩子 */
-  listUsers?: (keyword: string) => Promise<Array<Record<string, any>>>
+  /**
+   * 宿主能力注入（选人 / 角色 / 字典 / 上传）。
+   * ui-kit 不调用宿主 REST；缺哪个 adapter，对应控件降级。
+   */
+  adapters?: JeeflowHostAdapters
+  /**
+   * @deprecated 使用 adapters.listUsers。无任务上下文的选人回退。
+   * 有 taskId 且 scene=candidate 时 JfUserPicker 仍走 candidatePage。
+   */
+  listUsers?: (keyword: string) => Promise<JeeflowUserRow[]>
   /** 自定义 fetch（可选）：测试注入/SSR/超时控制 */
   fetchImpl?: typeof fetch
   /** 请求拦截（可选）：统一加 header / 改 body */

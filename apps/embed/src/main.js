@@ -84,11 +84,14 @@ const jeeflowUi = createJeeflowUi({
   getOperator: () => store.operator,
   getToken: () => store.token || null,
   hasPermission: () => true,
-  listUsers: async (keyword) => {
-    const kw = (keyword || '').trim().toLowerCase()
-    if (!kw) return EMBED_USERS
-    return EMBED_USERS.filter((u) =>
-      u.userId.toLowerCase().includes(kw) || u.realName.includes(kw))
+  adapters: {
+    listUsers: async (keyword) => {
+      const kw = (keyword || '').trim().toLowerCase()
+      if (!kw) return EMBED_USERS
+      return EMBED_USERS.filter((u) =>
+        u.userId.toLowerCase().includes(kw) || u.realName.includes(kw))
+    },
+    getUsersByIds: async (ids) => EMBED_USERS.filter((u) => ids.includes(u.userId)),
   },
   fetchImpl,
 })

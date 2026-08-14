@@ -42,7 +42,7 @@
       </div>
       <div class="jf-form-item">
         <label class="jf-form-label">被委托人 *</label>
-        <JfUserPicker v-model="surrogatePicked" placeholder="输入姓名/工号搜索" />
+        <JfUserPicker v-model="surrogatePicked" scene="surrogate" placeholder="输入姓名/工号搜索" />
       </div>
       <div class="jf-form-row">
         <div class="jf-form-item">

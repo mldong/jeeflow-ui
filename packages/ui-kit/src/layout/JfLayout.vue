@@ -135,5 +135,9 @@ function select(key: string) {
 }
 .jf-menu__item--active:hover { background: var(--jf-primary-soft, #e8f1ff); color: var(--jf-primary, #1677ff); }
 .jf-menu__icon { width: 18px; display: inline-flex; justify-content: center; }
-.jf-layout__content { flex: 1; min-width: 0; overflow-y: auto; background: var(--jf-content-bg, #f5f7fa); }
+.jf-layout__content {
+  flex: 1; min-width: 0; min-height: 0;
+  overflow-y: auto; background: var(--jf-content-bg, #f5f7fa);
+  display: flex; flex-direction: column;
+}
 </style>

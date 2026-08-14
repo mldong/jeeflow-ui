@@ -1,5 +1,5 @@
 <template>
-  <JfDrawer :visible="visible" :title="title" :width="width" @update:visible="emit('update:visible', $event)">
+  <JfDrawer :visible="visible" :title="title" :width="width" fill @update:visible="emit('update:visible', $event)">
     <div v-if="loading" class="jf-loading">加载中...</div>
     <div v-else-if="data" class="jf-detail-body">
       <JfTabs v-model="activeKey" :tabs="tabs">
@@ -85,7 +85,7 @@
     <JfDrawer v-model:visible="ccVisible" title="手动抄送" width="480px">
       <div class="jf-form-item">
         <label class="jf-form-label">抄送人</label>
-        <JfUserPicker v-model="ccIds" :task-id="null" placeholder="搜索姓名/工号" />
+        <JfUserPicker v-model="ccIds" scene="cc" placeholder="搜索姓名/工号" />
       </div>
       <div class="jf-drawer-actions">
         <button class="jf-btn jf-btn--ghost" @click="ccVisible = false">取消</button>

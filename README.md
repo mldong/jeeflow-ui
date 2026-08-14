@@ -19,12 +19,17 @@ jeeflow-ui/
 ```ts
 import { JeeflowUiProvider, useJeeflowUi } from '@mldong/jeeflow-ui'
 
-// 1. 注入配置（与后端门面的 3 个注入点前后端对称）
+// 1. 注入配置（门面 3 点 + 宿主 adapters）
 <JeeflowUiProvider :config="{
-  baseUrl: 'http://localhost:8100',     // 后端门面地址
-  getToken: () => store.token,          // 登录态
-  getOperator: () => store.userId,      // 当前用户 → 门面 operator
-  hasPermission: (codes) => hasAny(codes), // 权限码 → 按钮显隐
+  baseUrl: 'http://localhost:8100',
+  getToken: () => store.token,
+  getOperator: () => store.userId,
+  hasPermission: (codes) => hasAny(codes),
+  adapters: {
+    listUsers: (kw, ctx) => sysUserSelect(kw),   // 抄送/转办/委托；candidate+taskId 仍走引擎
+    getDict: (code) => dictApi(code),            // SchemaForm ApiDict
+    upload: (file) => oss.put(file),             // 附件；不传则只存文件名
+  },
 }">
   <App />
 </JeeflowUiProvider>
@@ -34,6 +39,22 @@ const { api, can } = useJeeflowUi()
 const todos = await api.processTask.todoList({ pageNum: 1, pageSize: 10 })
 await api.processTask.execute(taskId, SubmitType.AGREE, { tf_approvalComment: '同意' })
 ```
+
+### 宿主 adapters
+
+ui-kit **不调用**宿主 REST（无 `/sys/user/select`）。选人 / 角色 / 字典 / 上传由宿主注入；缺哪个，对应控件降级。
+
+| adapter | 用途 | 不传时 |
+|---------|------|--------|
+| `listUsers(keyword, ctx)` | 抄送 / 转办 / 委托 / 指定下一处理人 / 设计器指派 | 选人提示「请注入 listUsers」 |
+| `getUsersByIds(ids)` | 已选用户 chips 回显姓名 | 显示 userId |
+| `listRoles(keyword)` | 设计器按角色指派 | 角色指派隐藏 |
+| `getDict(code)` | SchemaForm `ApiDict` | 空下拉 |
+| `upload(file)` | 发起附件 / SchemaForm `Upload` | 只存文件名 |
+
+选人优先级：`scene=candidate` 且有 `taskId` → 门面 `processTask/candidatePage`；否则 `adapters.listUsers`。流程 JSON 的 `selectUserApi` 只作为 `ctx.apiHint`，ui-kit 不直接 fetch。
+
+顶层 `listUsers` 仍可用（已废弃），会自动并入 `adapters.listUsers`。
 
 ## 开发
 

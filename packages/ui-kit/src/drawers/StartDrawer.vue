@@ -1,5 +1,5 @@
 <template>
-  <JfDrawer :visible="visible" :title="drawerTitle" :width="width" @update:visible="emit('update:visible', $event)">
+  <JfDrawer :visible="visible" :title="drawerTitle" :width="width" fill @update:visible="emit('update:visible', $event)">
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else>
       <JfTabs v-model="activeKey" :tabs="tabs">

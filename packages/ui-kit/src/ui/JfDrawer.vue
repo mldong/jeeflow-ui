@@ -7,7 +7,7 @@
           <slot name="header-extra" />
           <button class="jf-drawer__close" @click="handleClose">&times;</button>
         </div>
-        <div class="jf-drawer__body">
+        <div class="jf-drawer__body" :class="{ 'jf-drawer__body--fill': fill }">
           <slot />
         </div>
       </div>
@@ -25,6 +25,8 @@ const props = defineProps({
   title: { type: String, default: '' },
   width: { type: String, default: '780px' },
   maskClosable: { type: Boolean, default: true },
+  /** 内容铺满（流程图 Tab / 定义详情）；表单类抽屉保持滚动 */
+  fill: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:visible', 'close'])
@@ -94,5 +96,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', handleKeydown); 
   color: var(--jf-text-muted, #999); border-radius: 6px;
 }
 .jf-drawer__close:hover { background: var(--jf-hover-bg, #f5f5f5); color: var(--jf-text, #333); }
-.jf-drawer__body { padding: 16px; overflow-y: auto; flex: 1; }
+.jf-drawer__body {
+  padding: 16px; flex: 1; min-height: 0;
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.jf-drawer__body--fill { overflow: hidden; }
+.jf-drawer__body--fill > :slotted(*) {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+}
 </style>

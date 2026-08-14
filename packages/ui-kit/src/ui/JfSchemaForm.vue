@@ -30,8 +30,17 @@
         @change="setVal(col, ($event.target as HTMLSelectElement).value)"
       >
         <option value="">{{ placeholderOf(col) }}</option>
-        <option v-for="o in (col.ext?.options || [])" :key="String(o.value)" :value="String(o.value)">{{ o.label }}</option>
+        <option v-for="o in optionsOf(col)" :key="String(o.value)" :value="String(o.value)">{{ o.label }}</option>
       </select>
+      <template v-else-if="isUpload(col.component)">
+        <input
+          v-if="!effectiveReadonly(col)"
+          class="jf-input"
+          type="file"
+          @change="onUpload(col, $event)"
+        />
+        <div v-if="getVal(col)" class="jf-muted" style="margin-top:4px">{{ String(getVal(col)) }}</div>
+      </template>
       <input
         v-else
         class="jf-input"
@@ -47,9 +56,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, inject, reactive, watch } from 'vue'
 import type { SchemaColumn } from '../helpers'
 import { FieldPerm, type FieldPermValue } from '../helpers'
+import { JeeflowUiKey } from '../adapters'
+import type { JeeflowHostAdapters, JeeflowDictItem } from '../adapters'
 
 defineOptions({ name: 'JeeflowSchemaForm' })
 
@@ -76,6 +87,8 @@ const emit = defineEmits<{
 }>()
 
 const errors = reactive<Record<string, string>>({})
+const dictCache = reactive<Record<string, JeeflowDictItem[]>>({})
+const adapters = inject<{ adapters?: JeeflowHostAdapters } | null>(JeeflowUiKey, null)?.adapters || {}
 
 function modelKey(fieldName: string): string {
   if (fieldName.startsWith('f_') || fieldName.startsWith('tf_')) return fieldName
@@ -100,11 +113,25 @@ function isRequired(col: SchemaColumn): boolean {
 
 function isSelect(component: string): boolean {
   const c = (component || '').toLowerCase()
-  return c === 'select' || c === 'radio'
+  return c === 'select' || c === 'radio' || c === 'apidict' || c === 'apiselect'
+}
+
+function isUpload(component: string): boolean {
+  return (component || '').toLowerCase() === 'upload'
 }
 
 function isTextarea(component: string): boolean {
   return (component || '').toLowerCase() === 'textarea'
+}
+
+function dictCodeOf(col: SchemaColumn): string {
+  return String(col.ext?.dictCode || col.ext?.code || col.ext?.dictType || '')
+}
+
+function optionsOf(col: SchemaColumn): Array<{ label: string; value: string | number }> {
+  if (col.ext?.options?.length) return col.ext.options
+  const code = dictCodeOf(col)
+  return (code && dictCache[code]) || []
 }
 
 function nativeType(component: string): string {
@@ -168,9 +195,42 @@ function onInput(col: SchemaColumn, e: Event) {
   setVal(col, el.type === 'number' ? (el.value === '' ? '' : Number(el.value)) : el.value)
 }
 
+async function onUpload(col: SchemaColumn, e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) {
+    setVal(col, '')
+    return
+  }
+  if (adapters.upload) {
+    try {
+      setVal(col, await adapters.upload(file))
+    } catch {
+      setVal(col, file.name)
+    }
+  } else {
+    setVal(col, file.name)
+  }
+}
+
 watch(() => props.modelValue, () => {
   for (const k of Object.keys(errors)) delete errors[k]
 })
+
+watch(columns, async (cols) => {
+  const getDict = adapters.getDict
+  if (!getDict) return
+  for (const col of cols) {
+    const c = (col.component || '').toLowerCase()
+    if (c !== 'apidict' && c !== 'apiselect') continue
+    const code = dictCodeOf(col)
+    if (!code || dictCache[code]) continue
+    try {
+      dictCache[code] = (await getDict(code)) || []
+    } catch {
+      dictCache[code] = []
+    }
+  }
+}, { immediate: true })
 
 function validate(): string | null {
   for (const k of Object.keys(errors)) delete errors[k]

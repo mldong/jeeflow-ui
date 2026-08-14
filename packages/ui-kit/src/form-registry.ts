@@ -14,6 +14,7 @@
  *  - 发起/详情：modelValue（f_ 表单数据）、defineId、instanceId
  *  - 办理页：额外 task（TaskRow）、submitType 由宿主触发
  * 未注册的 formKey：渲染内置 SchemaForm（__schema__.columns + 组件类型/必填/字段权限）。
+ * ApiDict/ApiSelect 走 adapters.getDict；Upload 走 adapters.upload；未注入则降级。
  */
 
 import type { Component } from 'vue'

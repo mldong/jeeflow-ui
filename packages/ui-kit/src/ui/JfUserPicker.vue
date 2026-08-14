@@ -43,21 +43,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useJeeflowUi } from '../provider'
+import type { JeeflowUserPickerScene, JeeflowUserRow } from '../adapters'
 
 defineOptions({ name: 'JfUserPicker' })
 
 const props = withDefaults(defineProps<{
   /** 已选 userId 列表（v-model） */
   modelValue?: string[]
-  /** 任务上下文：传了走 candidatePage（模型候选 ∪ 用户搜索） */
+  /** 任务上下文：scene=candidate 时走 candidatePage */
   taskId?: string | null
+  /** 选人场景；有 taskId 时默认 candidate，否则 cc */
+  scene?: JeeflowUserPickerScene
+  /** 流程 JSON selectUserApi，透传给 adapters.listUsers */
+  apiHint?: string
   placeholder?: string
   disabled?: boolean
 }>(), {
   modelValue: () => [],
   taskId: null,
+  apiHint: '',
   placeholder: '输入姓名/工号搜索',
   disabled: false,
 })
@@ -67,7 +73,7 @@ const emit = defineEmits<{
   change: [v: string[]]
 }>()
 
-const { api, config } = useJeeflowUi()
+const { api, adapters } = useJeeflowUi()
 
 const inputEl = ref<HTMLInputElement | null>(null)
 const keyword = ref('')
@@ -102,23 +108,41 @@ function onInput() {
   timer = setTimeout(search, 300)
 }
 
-/** 检索候选人：taskId → candidatePage；否则宿主 listUsers 钩子 */
+const scene = computed<JeeflowUserPickerScene>(() =>
+  props.scene || (props.taskId ? 'candidate' : 'cc'),
+)
+
+watch(() => props.modelValue.slice(), async (ids) => {
+  const missing = ids.filter((id) => id && !nameCache[id])
+  if (!missing.length || !adapters.getUsersByIds) return
+  try {
+    const rows = await adapters.getUsersByIds(missing)
+    for (const u of rows) if (u?.userId && u?.realName) nameCache[u.userId] = u.realName
+  } catch { /* 回显失败仍显示 userId */ }
+}, { immediate: true })
+
+/** 检索候选人：candidate+taskId → candidatePage；否则宿主 adapters.listUsers */
 async function search() {
   searching.value = true
   errorMsg.value = ''
   try {
     const kw = keyword.value.trim()
-    let rows: Array<Record<string, any>> = []
-    if (props.taskId) {
-      const r = await api.processTask.candidatePage(props.taskId, {
+    let rows: JeeflowUserRow[] = []
+    const useEngine = !!props.taskId && scene.value === 'candidate'
+    if (useEngine) {
+      const r = await api.processTask.candidatePage(props.taskId!, {
         ...(kw ? { m_LIKE_realName: kw } : {}),
         pageNum: 1, pageSize: 10,
       })
-      rows = r.rows
-    } else if (config.listUsers) {
-      rows = await config.listUsers(kw)
+      rows = r.rows as JeeflowUserRow[]
+    } else if (adapters.listUsers) {
+      rows = await adapters.listUsers(kw, {
+        scene: scene.value,
+        taskId: props.taskId,
+        apiHint: props.apiHint || undefined,
+      })
     } else {
-      errorMsg.value = '无用户源：请传 taskId 或在 provider 注入 listUsers'
+      errorMsg.value = '无用户源：请在 provider.adapters 注入 listUsers'
     }
     for (const u of rows) if (u?.realName) nameCache[u.userId] = u.realName
     results.value = rows.filter((u) => !props.modelValue.includes(u.userId))

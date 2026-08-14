@@ -2,7 +2,7 @@
  * @mldong/jeeflow-ui —— jeeflow 流程中心组件包
  *
  * 数据层（阶段 0）：
- *  - types.ts / api.ts / provider.ts / form-registry.ts
+ *  - types.ts / api.ts / adapters.ts / provider.ts / form-registry.ts
  *
  * 页面组件（阶段 1，管理系统形态，对齐 vben5-wf 8 菜单）：
  *  - layout/JfLayout（顶部 + 左侧菜单 + 内容区）
@@ -14,6 +14,15 @@
 
 export * from './types'
 export * from './api'
+export type {
+  JeeflowHostAdapters,
+  JeeflowUserRow,
+  JeeflowRoleRow,
+  JeeflowDictItem,
+  JeeflowListUsersContext,
+  JeeflowUserPickerScene,
+} from './adapters'
+export { resolveAdapters } from './adapters'
 export * from './provider'
 export * from './form-registry'
 export * from './helpers'

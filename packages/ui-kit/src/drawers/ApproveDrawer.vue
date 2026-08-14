@@ -1,5 +1,5 @@
 <template>
-  <JfDrawer :visible="visible" :title="title" :width="width" @update:visible="emit('update:visible', $event)">
+  <JfDrawer :visible="visible" :title="title" :width="width" fill @update:visible="emit('update:visible', $event)">
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else-if="task">
       <JfTabs v-model="activeKey" :tabs="tabs">
@@ -101,7 +101,12 @@
     >
       <div class="jf-form-item">
         <label class="jf-form-label">选择用户</label>
-        <JfUserPicker v-model="actorIds" :task-id="taskId" placeholder="搜索姓名/工号" />
+        <JfUserPicker
+          v-model="actorIds"
+          :task-id="addCandidateVisible ? taskId : null"
+          :scene="addCandidateVisible ? 'candidate' : 'surrogate'"
+          placeholder="搜索姓名/工号"
+        />
       </div>
       <div class="jf-drawer-actions">
         <button class="jf-btn jf-btn--ghost" @click="surrogateVisible = false; addCandidateVisible = false">取消</button>

@@ -80,7 +80,15 @@ onMounted(() => {
 .jf-flow-viewer {
   width: 100%;
   height: v-bind(height);
+  min-height: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.jf-flow-viewer :deep(.ding-designer) {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 .jf-viewer-loading, .jf-viewer-empty {
   position: absolute; inset: 0;
@@ -90,6 +98,7 @@ onMounted(() => {
 .jf-viewer-legend {
   display: flex; gap: 18px; justify-content: center;
   padding: 8px 0 2px; font-size: 13px; color: #666;
+  flex-shrink: 0;
 }
 .lg { display: inline-flex; align-items: center; gap: 6px; }
 .lg-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
