@@ -14,8 +14,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       mldong-flow-designer-dingtalk:
-        specifier: ^3.1.0
-        version: 3.1.0(vue@3.5.41(typescript@5.9.3))
+        specifier: ^3.1.1
+        version: 3.1.1(vue@3.5.41(typescript@5.9.3))
       vue:
         specifier: ^3.4.30
         version: 3.5.41(typescript@5.9.3)
@@ -36,8 +36,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       mldong-flow-designer-dingtalk:
-        specifier: ^3.1.0
-        version: 3.1.0(vue@3.5.41(typescript@5.9.3))
+        specifier: ^3.1.1
+        version: 3.1.1(vue@3.5.41(typescript@5.9.3))
       vue:
         specifier: ^3.4.30
         version: 3.5.41(typescript@5.9.3)
@@ -55,8 +55,8 @@ importers:
         specifier: ^5.0.5
         version: 5.2.4(vite@5.4.21)(vue@3.5.41(typescript@5.9.3))
       mldong-flow-designer-dingtalk:
-        specifier: ^3.1.0
-        version: 3.1.0(vue@3.5.41(typescript@5.9.3))
+        specifier: ^3.1.1
+        version: 3.1.1(vue@3.5.41(typescript@5.9.3))
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
@@ -478,8 +478,8 @@ packages:
     resolution: {integrity: sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  mldong-flow-designer-dingtalk@3.1.0:
-    resolution: {integrity: sha512-D/9jY4bmk0PAhENXDU0+6oLnT4onxdLHLRdCvAX1oiFNeSLB6MKErvHXmfwwXXHKPr2yCoWObw/Y+sHmevwtJg==}
+  mldong-flow-designer-dingtalk@3.1.1:
+    resolution: {integrity: sha512-Jar0SnWKqCozu8NwoA55wWSA5YYiqOnCyhiGGORRbkiD3McI1wPgnKl8MI1seFBejndf4NpJirRIvL7/PWhJYg==}
     peerDependencies:
       vue: ^3.4.0
 
@@ -880,7 +880,7 @@ snapshots:
     dependencies:
       brace-expansion: 2.1.4
 
-  mldong-flow-designer-dingtalk@3.1.0(vue@3.5.41(typescript@5.9.3)):
+  mldong-flow-designer-dingtalk@3.1.1(vue@3.5.41(typescript@5.9.3)):
     dependencies:
       vue: 3.5.41(typescript@5.9.3)
 
