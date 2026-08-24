@@ -39,6 +39,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/php-api/, ''),
       },
+      '/rust-api': {
+        target: 'http://localhost:8091',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/rust-api/, ''),
+      },
     },
   },
 })

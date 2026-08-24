@@ -63,12 +63,13 @@ const backends = [
   { label: 'Python', value: import.meta.env.VITE_BACKEND_PYTHON, disabled: import.meta.env.VITE_PYTHON_DISABLED === 'true' },
   { label: 'Node', value: import.meta.env.VITE_BACKEND_NODE, disabled: import.meta.env.VITE_NODE_DISABLED === 'true' },
   { label: 'PHP', value: import.meta.env.VITE_BACKEND_PHP, disabled: import.meta.env.VITE_PHP_DISABLED === 'true' },
+  { label: 'Rust', value: import.meta.env.VITE_BACKEND_RUST, disabled: import.meta.env.VITE_RUST_DISABLED === 'true' },
 ]
 // 过滤出在线后端，取第一个作为默认
 const onlineBackends = backends.filter(b => !b.disabled)
 
 // ── URL ?lang= 契约：website 各语言演示卡片携带 ?lang=xx，自动定位对应 Tab ──
-const LANG_MAP = { java: 'VITE_BACKEND_JAVA', go: 'VITE_BACKEND_GO', python: 'VITE_BACKEND_PYTHON', node: 'VITE_BACKEND_NODE', php: 'VITE_BACKEND_PHP' }
+const LANG_MAP = { java: 'VITE_BACKEND_JAVA', go: 'VITE_BACKEND_GO', python: 'VITE_BACKEND_PYTHON', node: 'VITE_BACKEND_NODE', php: 'VITE_BACKEND_PHP', rust: 'VITE_BACKEND_RUST' }
 const urlLang = new URLSearchParams(location.search).get('lang')
 const langBackend = urlLang && LANG_MAP[urlLang.toLowerCase()] ? import.meta.env[LANG_MAP[urlLang.toLowerCase()]] : ''
 const backend = ref(
