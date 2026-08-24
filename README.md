@@ -80,7 +80,7 @@ cd apps/embed && pnpm dev      # 默认 :5176；public/host.html 为宿主示例
 
 能力边界、Vue 整页/拆组件、iframe、adapters：**以文档站为准**（npm 发布前也可按此对照源码）。
 
-- 文档：[指南 13 · jeeflow-ui 流程中心](https://jeeflow-doc.mldong.com/guides/13-jeeflow-ui)（文档站 v1.8.17 已上线）
+- 文档：[指南 13 · jeeflow-ui 流程中心](https://jeeflow-doc.mldong.com/guides/13-jeeflow-ui)
 - 源码样板：`apps/demo`（同栈）、`apps/embed`（iframe）
 
 `@mldong/jeeflow-ui` **尚未发布到 npm**，不要 `pnpm add`。需要本地试：clone 本仓 `pnpm install && pnpm dev`。
@@ -90,3 +90,10 @@ cd apps/embed && pnpm dev      # 默认 :5176；public/host.html 为宿主示例
 - 统一门面接口文档：[jeeflow-doc · 规范 06](https://jeeflow-doc.mldong.com/spec/06-facade.html)
 - 流程定义配置项参考：[jeeflow-doc · 规范 02](https://jeeflow-doc.mldong.com/spec/02-flow-definition.html)
 - 设计器：[mldong-flow-designer-plus](https://www.npmjs.com/package/mldong-flow-designer-plus)（钉钉风格，canvas/dingtalk 双模式）
+
+## License
+
+Copyright © 2025-2026 mldong
+
+Licensed under the Apache License, Version 2.0.
+See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
