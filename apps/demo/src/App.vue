@@ -2,6 +2,14 @@
   <!-- 演示站壳：顶部（品牌/后端分段切换/用户卡）+ JfLayout 管理系统形态 -->
   <JfLayout :menus="menus" title="jeeflow 流程中心" :default-key="defaultKey" @select="onSelect">
     <template #header-right>
+      <a
+        v-if="proUrl"
+        class="demo-pro-link"
+        :href="proUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="含权限、低代码、完整 mldong 框架栈"
+      >完整版演示 →</a>
       <!-- 后端切换：分段控件（SPA 热切换，不 reload） -->
       <div class="demo-segment">
         <button
@@ -57,6 +65,8 @@ import {
 import { DEMO_USERS } from './main.js'
 
 // ── demo 特性状态（从 .env 读取后端路径和 disabled 状态）──
+const proUrl = import.meta.env.VITE_PRO_URL || ''
+
 const backends = [
   { label: 'Java', value: import.meta.env.VITE_BACKEND_JAVA, disabled: import.meta.env.VITE_JAVA_DISABLED === 'true' },
   { label: 'Go', value: import.meta.env.VITE_BACKEND_GO, disabled: import.meta.env.VITE_GO_DISABLED === 'true' },
@@ -157,6 +167,13 @@ function onSelect(key) {
 
 <style>
 @import './style.css';
+
+/* 完整版演示外链 */
+.demo-pro-link {
+  font-size: 13px; color: var(--jf-text-2, #4b5563); text-decoration: none;
+  white-space: nowrap; transition: color .15s;
+}
+.demo-pro-link:hover { color: var(--jf-primary, #1677ff); }
 
 /* 后端分段控件 */
 .demo-segment {
