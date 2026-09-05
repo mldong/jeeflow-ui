@@ -11,6 +11,7 @@ import type {
   DefineRow, DefineDetail, InstanceRow, InstanceDetail, TaskRow, TaskDetail,
   HighLightData, ApprovalRecordRow, DesignRow, ListByTypeItem, SurrogateRow,
   CandidateRow, JumpableTaskRow, AssigneeTextRow, SubmitTypeValue,
+  StatsOverview, StatsTrendRow, StatsGroupRow, StatsGranularity, StatsDimension,
 } from './types'
 import type { JeeflowHostAdapters, JeeflowUserRow } from './adapters'
 
@@ -149,6 +150,15 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<void>('processInstance/updateCCStatus', { processInstanceId }),
       ccList: (q: PageQuery = {}) =>
         flow<PageResult<InstanceRow>>('processInstance/ccList', q),
+      /** 指标卡统计（issues/103 v1.1；全局口径不带 operator 过滤；登录即可） */
+      statsOverview: (q: { start?: string; end?: string; stateIn?: number[] } = {}) =>
+        flow<StatsOverview>('processInstance/stats/overview', q),
+      /** 时间趋势：start/end 必填（yyyy-MM-dd HH:mm:ss），连续桶补 0 */
+      statsTrend: (q: { start: string; end: string; granularity: StatsGranularity }) =>
+        flow<StatsTrendRow[]>('processInstance/stats/trend', q),
+      /** 维度分组：9 个纯列 dimension，Top N 降序；stuckNode/stuckApprover 实时快照忽略 start/end */
+      statsGroup: (q: { dimension: StatsDimension; start?: string; end?: string; limit?: number }) =>
+        flow<StatsGroupRow[]>('processInstance/stats/group', q),
     },
 
     // ═══ 流程任务（9 action）═══

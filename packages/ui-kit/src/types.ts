@@ -277,3 +277,53 @@ export interface FlowGraph {
     text?: { value?: string }
   }>
 }
+
+// ── 统计接口（issues/103 v1.1 契约，spec 06 §4.2）──────────────────────────
+
+/** stats/trend 时间粒度 */
+export type StatsGranularity = 'hour' | 'day' | 'week' | 'month'
+
+/** stats/group 维度（9 个全纯列） */
+export type StatsDimension =
+  | 'state' | 'define' | 'category' | 'approver' | 'applicant'
+  | 'node' | 'stuckNode' | 'stuckApprover' | 'durationBucket'
+
+/** stats/overview 指标卡（全局口径；expire_time 未填充时 overdueTaskCount/onTimeRate 恒 0，前端可隐藏） */
+export interface StatsOverview {
+  total: number
+  inProgress: number
+  completed: number
+  rejected: number
+  withdrawn: number
+  suspended: number
+  /** 当日新发起（恒按服务器当天，不受 start/end 影响） */
+  todayNew: number
+  /** 已完成实例平均时长（秒） */
+  avgDurationSeconds: number
+  /** 驳回率：rejected / max(1, completed+rejected) */
+  rejectRate: number
+  /** 全系统进行中任务数（实时） */
+  pendingTaskCount: number
+  /** 逾期未办任务数（实时；expire_time 未填充恒 0） */
+  overdueTaskCount: number
+  /** 会签占比（已完成任务） */
+  countersignRate: number
+  /** 及时办结率（expire_time 非空的已完成任务） */
+  onTimeRate: number
+}
+
+/** stats/trend 行：连续桶补 0；bucket 格式随粒度（day=yyyy-MM-dd） */
+export interface StatsTrendRow {
+  bucket: string
+  started: number
+  finished: number
+}
+
+/** stats/group 行：count 降序；state 维度 label 可空（前端走字典） */
+export interface StatsGroupRow {
+  key: string
+  label: string | null
+  count: number
+  /** 仅 define/node 维度有 */
+  avgDurationSeconds?: number
+}
