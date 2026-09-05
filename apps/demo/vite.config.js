@@ -49,6 +49,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/moon-api/, ''),
       },
+      '/csharp-api': {
+        target: 'http://localhost:8093',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/csharp-api/, ''),
+      },
     },
   },
 })
