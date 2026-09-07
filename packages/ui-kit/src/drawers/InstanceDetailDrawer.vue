@@ -30,9 +30,16 @@
             </div>
           </div>
 
-          <h3 v-if="parsedSchema || Object.keys(bizFormData).length" class="jf-section-title">申请信息</h3>
+          <h3 v-if="registeredForm || parsedSchema || Object.keys(bizFormData).length" class="jf-section-title">申请信息</h3>
+          <component
+            v-if="registeredForm"
+            :is="registeredForm"
+            ref="bizFormRef"
+            v-model="bizFormData"
+            :view="!reSubmitable"
+          />
           <SchemaForm
-            v-if="parsedSchema || Object.keys(bizFormData).length"
+            v-else-if="parsedSchema || Object.keys(bizFormData).length"
             ref="bizFormRef"
             v-model="bizFormData"
             :schema="parsedSchema"
@@ -106,7 +113,7 @@ import { SchemaForm } from '../form-registry'
 import { useJeeflowUi } from '../provider'
 import {
   fmtTime, stateLabel, parseSchema, buildPermissionMap, firstTaskNode,
-  schemaFieldLabels, extractBizFormData,
+  schemaFieldLabels, extractBizFormData, firstTaskFormKey, isBuiltinSchemaFormKey,
 } from '../helpers'
 import { toast } from '../toast'
 import type { InstanceDetail, HighLightData, ApprovalRecordRow, AssigneeTextRow, NodeProgress } from '../types'
@@ -124,7 +131,7 @@ const emit = defineEmits<{
   changed: []
 }>()
 
-const { api, can } = useJeeflowUi()
+const { api, can, getForm } = useJeeflowUi()
 
 const loading = ref(false)
 const acting = ref(false)
@@ -157,6 +164,12 @@ const reSubmitable = computed(() =>
 )
 const graph = computed(() => data.value?.jsonObject || null)
 const parsedSchema = computed(() => parseSchema(graph.value))
+/** 表单分发（对齐 vben5-wf）：formKey 命中宿主注册组件优先渲染，未命中回落内置 SchemaForm */
+const registeredForm = computed(() => {
+  const key = firstTaskFormKey(graph.value)
+  if (key && !isBuiltinSchemaFormKey(key)) return getForm(key, 'detail')
+  return null
+})
 const permMap = computed(() =>
   buildPermissionMap(graph.value, firstTaskNode(graph.value), parsedSchema.value?.columns))
 const bizLabels = computed(() => schemaFieldLabels(graph.value))

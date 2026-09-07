@@ -148,6 +148,9 @@ textarea.jf-input { resize: vertical; font-family: inherit; }
   background: var(--jf-hover, #f5f7fa); color: var(--jf-text-2, #4b5563); cursor: not-allowed;
 }
 
+/* 表单只读明细（自定义表单 view 模式） */
+.jf-detail-text { font-size: 14px; color: var(--jf-text, #1f1f1f); line-height: 1.6; word-break: break-all; }
+
 /* Tabs */
 .jf-tabs { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .jf-tabs__nav {

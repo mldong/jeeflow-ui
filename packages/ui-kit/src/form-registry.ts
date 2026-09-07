@@ -11,7 +11,9 @@
  * ```
  *
  * 组件约定（props 契约）：
- *  - 发起/详情：modelValue（f_ 表单数据）、defineId、instanceId
+ *  - 发起/详情：modelValue（f_ 表单数据）、defineId、instanceId；
+ *    详情场景额外收到 view：true 只读明细（命中注册组件即渲染，不再依赖 __schema__/f_* 回落）、
+ *    false 表示发起人可重新提交（可编辑）。建议实现并 defineExpose({ validate })（返回错误文案或 null）。
  *  - 办理页：额外 task（TaskRow）、submitType 由宿主触发
  * 未注册的 formKey：渲染内置 SchemaForm（__schema__.columns + 组件类型/必填/字段权限）。
  * ApiDict/ApiSelect 走 adapters.getDict；Upload 走 adapters.upload；未注入则降级。
