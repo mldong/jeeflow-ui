@@ -49,3 +49,35 @@ jobs:
           strip_components: 1
           overwrite: true
           rm: true
+
+  publish:
+    name: Publish @mldong/jeeflow-ui to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build ui-kit
+        run: pnpm build:kit
+      - name: Verify build artifacts
+        run: |
+          ls -l packages/ui-kit/dist/
+          test -f packages/ui-kit/dist/jeeflow-ui.js
+          test -f packages/ui-kit/dist/jeeflow-ui.umd.cjs
+          test -f packages/ui-kit/dist/index.d.ts
+      - name: Pack dry-run
+        run: |
+          cd packages/ui-kit
+          npm pack --dry-run
+      - name: Publish to npm
+        working-directory: packages/ui-kit
+        run: npm publish --access=public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

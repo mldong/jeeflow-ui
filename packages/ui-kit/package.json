@@ -1,6 +1,11 @@
 {
   "name": "@mldong/jeeflow-ui",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "homepage": "https://github.com/mldong/jeeflow-ui#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mldong/jeeflow-ui.git"
+  },
   "description": "jeeflow 流程中心组件包——基于统一门面（40 action）的通用流程 UI，可集成到任意业务系统",
   "type": "module",
   "main": "./dist/jeeflow-ui.umd.cjs",
