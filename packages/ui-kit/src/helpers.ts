@@ -123,7 +123,7 @@ export interface SchemaColumn {
   component: string
   ext?: {
     span?: number
-    required?: number | boolean
+    required?: number | boolean | string
     placeholder?: string
     options?: Array<{ label: string; value: string | number }>
     [key: string]: unknown

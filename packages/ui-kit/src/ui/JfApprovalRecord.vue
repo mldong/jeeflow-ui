@@ -57,7 +57,7 @@ function operatorOf(r: ApprovalRecordRow): string {
   return (r.ext?.u_realName || r.operator || '-') as string
 }
 
-function submitOf(r: ApprovalRecordRow): unknown {
+function submitOf(r: ApprovalRecordRow): number | string | null | undefined {
   return r.ext?.submitType ?? r.variable?.submitType
 }
 
