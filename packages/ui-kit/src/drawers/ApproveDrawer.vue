@@ -215,13 +215,13 @@ function hasBtn(k: ActionBtnKey): boolean {
 }
 
 const taskFormKey = computed(() => task.value?.formKey ?? '')
+// 任务表单只渲染宿主注册的审批表单；不再回落 SchemaForm——
+// 流程级 __schema__ 已由"申请信息"表单按字段权限渲染，回落会画出一整份绑空数据的重复表单
 const taskFormComponent = computed<Component | null>(() => {
   if (!taskFormKey.value || isBuiltinSchemaFormKey(taskFormKey.value)) {
-    return parsedSchema.value ? SchemaForm : null
+    return null
   }
-  const registered = getForm(taskFormKey.value, 'approve')
-  if (registered) return registered
-  return parsedSchema.value ? SchemaForm : null
+  return getForm(taskFormKey.value, 'approve') ?? null
 })
 const taskFormAttrs = computed(() =>
   taskFormComponent.value === SchemaForm
