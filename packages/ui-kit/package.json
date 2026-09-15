@@ -16,7 +16,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/jeeflow-ui.js",
       "require": "./dist/jeeflow-ui.umd.cjs"
-    }
+    },
+    "./dist/style.css": "./dist/style.css"
   },
   "files": ["dist"],
   "scripts": {
