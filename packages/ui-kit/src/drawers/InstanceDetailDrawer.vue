@@ -5,8 +5,9 @@
       <JfTabs v-model="activeKey" :tabs="tabs">
         <div v-show="activeKey === 'detail'">
           <div class="jf-detail-meta">
-            <span>发起人: <strong>{{ data.operator || '-' }}</strong></span>
-            <span>流水号: <strong>{{ data.businessNo || '-' }}</strong></span>
+            <span>流程标题: <strong>{{ instanceTitle }}</strong></span>
+            <span>发起人: <strong>{{ initiatorName }}</strong></span>
+            <span v-if="data.businessNo">流水号: <strong>{{ data.businessNo }}</strong></span>
             <span>时间: <strong>{{ fmtTime(data.createTime) }}</strong></span>
             <span v-if="assigneeText">当前处理人: <strong>{{ assigneeText }}</strong></span>
           </div>
@@ -30,16 +31,16 @@
             </div>
           </div>
 
-          <h3 v-if="registeredForm || parsedSchema || Object.keys(bizFormData).length" class="jf-section-title">申请信息</h3>
+          <h3 class="jf-section-title">申请信息</h3>
           <component
-            v-if="registeredForm"
+            v-if="bizSource === 'registered'"
             :is="registeredForm"
             ref="bizFormRef"
             v-model="bizFormData"
             :view="!reSubmitable"
           />
           <SchemaForm
-            v-else-if="parsedSchema || Object.keys(bizFormData).length"
+            v-else-if="bizSource === 'schema' || bizSource === 'data'"
             ref="bizFormRef"
             v-model="bizFormData"
             :schema="parsedSchema"
@@ -47,7 +48,13 @@
             :permissions="permMap"
             :readonly="!reSubmitable"
             field-prefix="f_"
+            empty-hint="该流程未配置表单字段，无可回显内容"
           />
+          <div v-else class="jf-muted jf-form-hint">
+            {{ bizSource === 'unregistered'
+              ? `未注册申请表单「${applyFormKey}」，宿主 registerForm 后即可回显`
+              : '该流程未配置申请表单（节点属性 form 为空）' }}
+          </div>
 
           <div class="jf-detail-actions">
             <button
@@ -114,6 +121,7 @@ import { useJeeflowUi } from '../provider'
 import {
   fmtTime, stateLabel, parseSchema, buildPermissionMap, firstTaskNode,
   schemaFieldLabels, extractBizFormData, firstTaskFormKey, isBuiltinSchemaFormKey,
+  resolveFormSource, type FormSource,
 } from '../helpers'
 import { toast } from '../toast'
 import type { InstanceDetail, HighLightData, ApprovalRecordRow, AssigneeTextRow, NodeProgress } from '../types'
@@ -164,12 +172,29 @@ const reSubmitable = computed(() =>
 )
 const graph = computed(() => data.value?.jsonObject || null)
 const parsedSchema = computed(() => parseSchema(graph.value))
+/** 实例变量全集：detail 响应不带 ext，variables 就是它的正源（列表行上同一份数据叫 ext） */
+const instVars = computed<Record<string, any>>(() => {
+  const v = data.value?.variables
+  return v && typeof v === 'object' ? v : {}
+})
+const instanceTitle = computed(() =>
+  String(instVars.value.autoGenTitle || instVars.value.f_title || data.value?.displayName || '-'))
+const initiatorName = computed(() =>
+  String(instVars.value.u_realName || data.value?.operator || '-'))
+const applyFormKey = computed(() => firstTaskFormKey(graph.value))
 /** 表单分发（对齐 vben5-wf）：formKey 命中宿主注册组件优先渲染，未命中回落内置 SchemaForm */
 const registeredForm = computed(() => {
-  const key = firstTaskFormKey(graph.value)
-  if (key && !isBuiltinSchemaFormKey(key)) return getForm(key, 'detail')
-  return null
+  const key = applyFormKey.value
+  if (!key || isBuiltinSchemaFormKey(key)) return null
+  return getForm(key, 'detail')
 })
+const bizSource = computed<FormSource>(() =>
+  resolveFormSource({
+    formKey: applyFormKey.value,
+    registered: registeredForm.value,
+    schema: parsedSchema.value,
+    dataCount: Object.keys(bizFormData.value).length,
+  }))
 const permMap = computed(() =>
   buildPermissionMap(graph.value, firstTaskNode(graph.value), parsedSchema.value?.columns))
 const bizLabels = computed(() => schemaFieldLabels(graph.value))

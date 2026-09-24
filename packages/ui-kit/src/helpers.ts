@@ -259,22 +259,109 @@ export function initiateExtraFlags(graph: any): {
   return { selectUser, cc, reason, attachment, any: selectUser || cc || reason || attachment }
 }
 
-/** 从实例/任务变量里抽出 f_* 表单数据 */
-export function extractBizFormData(source: any): Record<string, any> {
-  if (!source) return {}
-  let vars: Record<string, any> | null = null
-  if (source.formData && typeof source.formData === 'object') vars = source.formData
-  else if (source.instanceExt && typeof source.instanceExt === 'object') vars = source.instanceExt
-  else if (source.ext && typeof source.ext === 'object') vars = source.ext
-  else if (typeof source.instanceVariable === 'string') {
-    try { vars = JSON.parse(source.instanceVariable) } catch { vars = null }
-  } else if (source.variable && typeof source.variable === 'object') vars = source.variable
-  if (!vars) return {}
+/** 变量对象里的 f_* / tf_* 切片 */
+function onlyPrefixed(vars: Record<string, any> | null | undefined, prefix: string): Record<string, any> {
   const out: Record<string, any> = {}
-  for (const [k, v] of Object.entries(vars)) {
-    if (k.startsWith('f_')) out[k] = v
+  for (const [k, v] of Object.entries(vars || {})) {
+    if (k.startsWith(prefix)) out[k] = v
   }
   return out
+}
+
+function objOrEmpty(v: unknown): Record<string, any> {
+  return v && typeof v === 'object' ? (v as Record<string, any>) : {}
+}
+
+/** 实例级表单源：processInstance/detail 的 formData（引擎已切好的 f_* 集） */
+export function pickInstanceFormData(source: any): Record<string, any> {
+  return objOrEmpty(source?.formData)
+}
+
+/** 任务级表单源：任务行与 processTask/detail 的 taskFormData（tf_* 集） */
+export function pickTaskFormData(source: any): Record<string, any> {
+  return objOrEmpty(source?.taskFormData)
+}
+
+/** 任务变量对象：服务端把 variable JSON 解析成的 ext（任务级为空时引擎回退实例级） */
+export function pickExt(source: any): Record<string, any> {
+  return objOrEmpty(source?.ext)
+}
+
+/** 实例变量对象：任务行上的 instanceExt */
+export function pickInstanceExt(source: any): Record<string, any> {
+  return objOrEmpty(source?.instanceExt)
+}
+
+/**
+ * 从实例/任务响应里抽 f_* 业务表单数据。取数顺序对齐 vben5-wf 消费口径：
+ * formData（实例 detail 的 f_* 切片）→ instanceExt（任务行上的实例变量）→ variables（实例 detail 变量全集，
+ * 因 detail 响应不带 ext，它是 detail 场景的正源而非兜底）。
+ *
+ * 刻意不读 variable / instanceVariable 原串：八栈出口类型不统一（java/rust/moon/csharp 出 JSON 串，
+ * go/python/node/php 出对象），服务端已统一解析为 ext，前端再 parse 等于把类型漂移引进来。
+ */
+export function extractBizFormData(source: any): Record<string, any> {
+  if (!source) return {}
+  for (const cand of [pickInstanceFormData(source), pickInstanceExt(source), objOrEmpty(source.variables)]) {
+    const picked = onlyPrefixed(cand, 'f_')
+    if (Object.keys(picked).length) return picked
+  }
+  return {}
+}
+
+/** 从任务响应抽审批人填过的 tf_*（办理表单回显源） */
+export function extractTaskFormData(source: any): Record<string, any> {
+  if (!source) return {}
+  for (const cand of [pickTaskFormData(source), pickExt(source)]) {
+    const picked = onlyPrefixed(cand, 'tf_')
+    if (Object.keys(picked).length) return picked
+  }
+  return {}
+}
+
+/** 列表行取变量：任务行是 instanceExt→ext，实例行是 ext，detail 是 variables */
+function rowVarSources(row: any): Record<string, any>[] {
+  return [pickInstanceExt(row), pickExt(row), objOrEmpty(row?.variables)]
+}
+
+/**
+ * 列表行流程标题（vben5-wf 口径：列读 ext.autoGenTitle / ext.f_title，
+ * 任务行上的实例变量叫 instanceExt）。取不到再回落流程定义显示名。
+ */
+export function rowTitle(row: any): string {
+  for (const src of rowVarSources(row)) {
+    const t = src.autoGenTitle || src.f_title
+    if (t) return String(t)
+  }
+  return String(row?.displayName || row?.processDefineDisplayName || '-')
+}
+
+/** 列表行发起人姓名（instanceExt.u_realName / ext.u_realName），取不到回落工号 */
+export function rowInitiator(row: any): string {
+  for (const src of rowVarSources(row)) {
+    if (src.u_realName) return String(src.u_realName)
+  }
+  return String(row?.operator || '-')
+}
+
+export type FormSource = 'registered' | 'schema' | 'data' | 'unregistered' | 'none'
+
+/**
+ * 表单区渲染来源判定——避免"没数据就整段静默消失"：
+ * registered 命中宿主注册组件 / schema 流程带 __schema__ / data 仅有 f_* 数据（内置表单按数据键回退）/
+ * unregistered 有 formKey 但宿主没注册（必须给可读提示）/ none 流程压根没配表单。
+ */
+export function resolveFormSource(opts: {
+  formKey?: string | null
+  registered?: unknown
+  schema?: unknown
+  dataCount?: number
+}): FormSource {
+  if (opts.registered) return 'registered'
+  if (opts.schema) return 'schema'
+  if ((opts.dataCount ?? 0) > 0) return 'data'
+  if (isBuiltinSchemaFormKey(opts.formKey || '')) return 'schema'
+  return opts.formKey ? 'unregistered' : 'none'
 }
 
 /** SchemaWfForm / SchemaTfForm 是 vben5 元数据表单占位名，走内置 SchemaForm */

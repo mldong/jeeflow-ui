@@ -12,14 +12,21 @@
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else>
       <table v-if="rows.length" class="jf-table">
-        <thead><tr><th>流程</th><th>任务</th><th>状态</th><th>完成时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>流程</th><th>任务</th><th>标题</th><th>发起人</th><th>状态</th><th>完成时间</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="t in rows" :key="t.id">
             <td>{{ t.processDefineDisplayName || '-' }}</td>
             <td><strong>{{ t.displayName }}</strong></td>
+            <td>{{ rowTitle(t) }}</td>
+            <td class="jf-muted">{{ rowInitiator(t) }}</td>
             <td><JfBadge :type="taskStateBadgeType(t.taskState)">{{ taskStateLabel(t.taskState) }}</JfBadge></td>
             <td class="jf-muted">{{ fmtTime(t.finishTime || t.createTime, true) }}</td>
-            <td><button class="jf-btn jf-btn--ghost jf-btn--sm" @click="openDetail(t.processInstanceId)">详情</button></td>
+            <td>
+              <div class="jf-btn-row">
+                <button class="jf-btn jf-btn--ghost jf-btn--sm" @click="openTask(t.id)">我的办理</button>
+                <button class="jf-btn jf-btn--ghost jf-btn--sm" @click="openDetail(t.processInstanceId)">详情</button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -34,6 +41,8 @@
 
     <!-- 详情抽屉（看轨迹） -->
     <InstanceDetailDrawer v-model:visible="detailVisible" :instance-id="detailInstanceId" />
+    <!-- 我这次办理填过的表单与审批意见（对齐 vben5-wf：已办点开就是办理抽屉） -->
+    <ApproveDrawer v-model:visible="taskVisible" :task-id="taskId" readonly />
   </div>
 </template>
 
@@ -42,8 +51,9 @@ import { ref, onMounted } from 'vue'
 import JfBadge from '../ui/JfBadge.vue'
 import JfIcon from '../ui/JfIcon.vue'
 import InstanceDetailDrawer from '../drawers/InstanceDetailDrawer.vue'
+import ApproveDrawer from '../drawers/ApproveDrawer.vue'
 import { useJeeflowUi } from '../provider'
-import { fmtTime, taskStateLabel, taskStateBadgeType } from '../helpers'
+import { fmtTime, taskStateLabel, taskStateBadgeType, rowTitle, rowInitiator } from '../helpers'
 import { toast } from '../toast'
 import type { TaskRow } from '../types'
 
@@ -61,6 +71,13 @@ const keyword = ref('')
 
 const detailVisible = ref(false)
 const detailInstanceId = ref<string | null>(null)
+const taskVisible = ref(false)
+const taskId = ref<string | null>(null)
+
+function openTask(id: string) {
+  taskId.value = id
+  taskVisible.value = true
+}
 
 async function reload() {
   loading.value = true

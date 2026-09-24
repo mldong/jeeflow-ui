@@ -5,17 +5,33 @@
       <JfTabs v-model="activeKey" :tabs="tabs">
         <!-- 详情 -->
         <div v-show="activeKey === 'detail'">
-          <h3 v-if="parsedSchema || Object.keys(bizFormData).length" class="jf-section-title">申请信息</h3>
-          <SchemaForm
-            v-if="parsedSchema || Object.keys(bizFormData).length"
-            ref="bizFormRef"
-            v-model="bizFormData"
-            :schema="parsedSchema"
-            :field-labels="bizLabels"
-            :permissions="permMap"
-            :readonly="bizReadonly"
-            field-prefix="f_"
-          />
+          <!-- 申请信息：命中宿主注册的申请表单优先（与详情抽屉对称），办理表单与之同组件时不重复渲染 -->
+          <template v-if="!applyAreaRedundant">
+            <h3 class="jf-section-title">申请信息</h3>
+            <component
+              v-if="bizSource === 'registered'"
+              :is="applyFormComponent"
+              ref="bizFormRef"
+              v-model="bizFormData"
+              :view="bizReadonly"
+            />
+            <SchemaForm
+              v-else-if="bizSource === 'schema' || bizSource === 'data'"
+              ref="bizFormRef"
+              v-model="bizFormData"
+              :schema="parsedSchema"
+              :field-labels="bizLabels"
+              :permissions="permMap"
+              :readonly="bizReadonly"
+              field-prefix="f_"
+              empty-hint="该流程未配置表单字段，无可回显内容"
+            />
+            <div v-else class="jf-muted jf-form-hint">
+              {{ bizSource === 'unregistered'
+                ? `未注册申请表单「${applyFormKey}」，宿主 registerForm 后即可回显`
+                : '该流程未配置申请表单（节点属性 form 为空）' }}
+            </div>
+          </template>
 
           <component
             :is="taskFormComponent"
@@ -23,6 +39,9 @@
             v-model="formData"
             v-bind="taskFormAttrs"
           />
+          <div v-else-if="taskFormUnregistered" class="jf-muted jf-form-hint">
+            未注册办理表单「{{ taskFormKey }}」，宿主 registerForm 后即可填写
+          </div>
 
           <template v-if="!readonly && isDoing">
             <template v-if="isFirstTaskNode">
@@ -60,6 +79,11 @@
               </div>
             </template>
           </template>
+          <!-- 只读态（已办入口 / 非 DOING）：审批意见也要回显，不能只留表单 -->
+          <div v-else-if="comment" class="jf-form-item">
+            <label class="jf-form-label">审批意见</label>
+            <div class="jf-detail-text">{{ comment }}</div>
+          </div>
         </div>
 
         <!-- 流程图 -->
@@ -130,9 +154,10 @@ import { useJeeflowUi } from '../provider'
 import { SubmitType } from '../types'
 import type { TaskDetail, JumpableTaskRow, HighLightData, ApprovalRecordRow, AssigneeTextRow } from '../types'
 import {
-  parseSchema, buildPermissionMap, findTaskNode, firstTaskNode,
-  resolveActionBtns, isBuiltinSchemaFormKey,
-  schemaFieldLabels, extractBizFormData, type ActionBtnKey,
+  parseSchema, buildPermissionMap, findTaskNode, firstTaskNode, firstTaskFormKey,
+  resolveActionBtns, isBuiltinSchemaFormKey, resolveFormSource,
+  schemaFieldLabels, extractBizFormData, extractTaskFormData,
+  type ActionBtnKey, type FormSource,
 } from '../helpers'
 import { toast } from '../toast'
 
@@ -232,7 +257,33 @@ const taskFormAttrs = computed(() =>
         readonly: props.readonly,
         fieldPrefix: 'tf_',
       }
-    : { task: task.value })
+    // 已办 / 只读入口（对齐 vben5-wf：已办的详情就是办理抽屉）走只读明细，不再渲染可编辑控件
+    : { task: task.value, view: props.readonly || !isDoing.value })
+
+/** 申请节点的 formKey 与宿主注册组件——与 InstanceDetailDrawer 同口径（办理抽屉此前缺这一路） */
+const applyFormKey = computed(() => firstTaskFormKey(graph.value))
+const applyFormComponent = computed<Component | null>(() => {
+  const k = applyFormKey.value
+  if (!k || isBuiltinSchemaFormKey(k)) return null
+  return getForm(k, 'detail') ?? null
+})
+const bizSource = computed<FormSource>(() =>
+  resolveFormSource({
+    formKey: applyFormKey.value,
+    registered: applyFormComponent.value,
+    schema: parsedSchema.value,
+    dataCount: Object.keys(bizFormData.value).length,
+  }))
+/** 办理节点复用的就是申请表单本身（如"含驳回流程"task1 的 formKey=apply-form）且无申请数据可展示：
+ *  下面那份可编辑表单已覆盖，不再画一份空的重复表单（dd130fa 的病灶） */
+const applyAreaRedundant = computed(() =>
+  Boolean(taskFormComponent.value)
+  && taskFormComponent.value === applyFormComponent.value
+  && !Object.keys(bizFormData.value).length)
+/** 有 formKey 但宿主未注册 approve 表单：给可读提示，不再静默空白 */
+const taskFormUnregistered = computed(() =>
+  !isFirstTaskNode.value && Boolean(taskFormKey.value) && !taskFormComponent.value
+  && !isBuiltinSchemaFormKey(taskFormKey.value))
 
 watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
   if (!v || !id) return
@@ -252,6 +303,10 @@ watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
   activeKey.value = 'detail'
   try {
     task.value = await api.processTask.detail(id)
+    // 任务级表单回显：引擎在 taskFormData 里给审批人上一轮填过的 tf_*（vben5-wf 同口径，此前零消费）
+    const tf = extractTaskFormData(task.value)
+    formData.value = tf
+    comment.value = String(tf.tf_approvalComment ?? '')
     bizFormData.value = extractBizFormData(task.value)
     const instId = task.value.processInstanceId
     const jobs: Promise<void>[] = [

@@ -15,7 +15,10 @@
  *    详情场景额外收到 view：true 只读明细（命中注册组件即渲染，不再依赖 __schema__/f_* 回落）、
  *    false 表示发起人可重新提交（可编辑）。建议实现并 defineExpose({ validate })（返回错误文案或 null）。
  *  - 办理页：额外 task（TaskRow）、submitType 由宿主触发
- * 未注册的 formKey：渲染内置 SchemaForm（__schema__.columns + 组件类型/必填/字段权限）。
+ * 未注册的 formKey：流程带 __schema__ 时走内置 SchemaForm；否则办理/详情显示"未注册表单 <formKey>"可读提示
+ * （不再整段静默消失——演示站此前因此看着像"数据没回显"，实为宿主没注册组件）。
+ * 宿主侧目录约定（演示站样板，对齐 vben5-wf）：forms/wf-form/*.vue = 申请级（发起+详情），
+ * forms/tf-form/*.vue = 节点级办理表单（字段名带 tf_ 前缀才能与引擎 taskFormData 往返）。
  * ApiDict/ApiSelect 走 adapters.getDict；Upload 走 adapters.upload；未注入则降级。
  */
 

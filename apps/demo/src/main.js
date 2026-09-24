@@ -1,8 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import { createJeeflowUi, JeeflowUiKey } from '@mldong/jeeflow-ui'
-import ApplyForm from './forms/apply-form.vue'
-import ExpenseForm from './forms/expense-form.vue'
 
 // 演示用户（与四后端同一套 8 个具名用户）
 export const DEMO_USERS = [
@@ -60,9 +58,18 @@ const jeeflowUi = createJeeflowUi({
   },
 })
 
-// 业务表单注册（宿主样板：formKey → 组件）
-jeeflowUi.registerForm('apply-form', ApplyForm)
-jeeflowUi.registerForm('expense-form', ExpenseForm)
+// 业务表单注册（对齐 vben5-wf 自定义 .vue 方式：目录名即 formKey，组件 name 作别名一并注册）
+//   forms/wf-form/*.vue = 申请级（发起 + 详情只读明细），三态通用
+//   forms/tf-form/*.vue = 节点级（办理时填写），只应答 approve 场景，避免与"申请信息"重复渲染
+const formModules = import.meta.glob('./forms/*/*.vue', { eager: true })
+for (const [path, mod] of Object.entries(formModules)) {
+  const m = path.match(/\/forms\/(wf-form|tf-form)\/([^/]+)\.vue$/)
+  const comp = mod?.default
+  if (!m || !comp) continue
+  const opts = m[1] === 'tf-form' ? { scenes: ['approve'] } : undefined
+  jeeflowUi.registerForm(m[2], comp, opts)
+  if (comp.name && comp.name !== m[2]) jeeflowUi.registerForm(comp.name, comp, opts)
+}
 
 createApp(App)
   .provide(JeeflowUiKey, jeeflowUi)

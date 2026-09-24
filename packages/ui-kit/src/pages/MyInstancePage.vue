@@ -12,11 +12,12 @@
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else>
       <table v-if="rows.length" class="jf-table">
-        <thead><tr><th>ID</th><th>流程</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>ID</th><th>流程</th><th>标题</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="i in rows" :key="i.id">
             <td class="jf-muted">{{ i.id }}</td>
             <td>{{ i.displayName || i.processDefineDisplayName }}</td>
+            <td>{{ rowTitle(i) }}</td>
             <td><JfBadge :type="stateBadgeType(i.state)">{{ stateLabel(i.state) }}</JfBadge></td>
             <td class="jf-muted">{{ fmtTime(i.createTime, true) }}</td>
             <td>
@@ -47,7 +48,7 @@ import JfBadge from '../ui/JfBadge.vue'
 import JfIcon from '../ui/JfIcon.vue'
 import InstanceDetailDrawer from '../drawers/InstanceDetailDrawer.vue'
 import { useJeeflowUi } from '../provider'
-import { fmtTime, stateLabel, stateBadgeType } from '../helpers'
+import { fmtTime, stateLabel, stateBadgeType, rowTitle } from '../helpers'
 import { toast } from '../toast'
 import type { InstanceRow } from '../types'
 

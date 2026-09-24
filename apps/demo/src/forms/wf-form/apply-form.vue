@@ -55,9 +55,13 @@
 <script setup>
 import { computed } from 'vue'
 
+defineOptions({ name: 'ApplyForm' })
+
 const props = defineProps({
   // 详情查看：true 只读明细 / false 可编辑（发起人重新提交）
   view: { type: Boolean, default: false },
+  // 办理抽屉会带 TaskRow；本表单不消费，声明出来避免落到根元素上成未知属性
+  task: { type: Object, default: null },
 })
 const modelValue = defineModel({ type: Object, default: () => ({}) })
 

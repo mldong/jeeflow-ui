@@ -89,6 +89,8 @@
 .jf-loading { text-align: center; padding: 40px; color: #888; }
 .jf-empty { text-align: center; padding: 32px; color: #999; font-size: 13px; }
 .jf-muted { color: #888; font-size: 13px; }
+/* 表单区无可渲染内容时的可读提示（替代此前的整段静默消失） */
+.jf-form-hint { padding: 10px 12px; border: 1px dashed #ddd; border-radius: 6px; margin: 4px 0 8px; font-size: 13px; color: #888; }
 
 /* 分页 */
 .jf-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; }
@@ -141,6 +143,8 @@ textarea.jf-input { resize: vertical; font-family: inherit; }
 
 /* SchemaForm */
 .jf-schema-form { display: flex; flex-wrap: wrap; gap: 0 16px; }
+/* 自定义表单里的小标题要独占一行，否则和第一个字段挤在同一行 */
+.jf-schema-form > .jf-section-title { width: 100%; }
 .jf-schema-form .jf-form-item { width: 100%; }
 .jf-req { color: var(--jf-danger, #ff4d4f); margin-left: 2px; }
 .jf-form-error { font-size: 12px; color: var(--jf-danger, #ff4d4f); margin-top: 4px; }

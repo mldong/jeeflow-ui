@@ -13,13 +13,15 @@
     <template v-else>
       <table v-if="rows.length" class="jf-table">
         <thead>
-          <tr><th>流程</th><th>任务</th><th>表单</th><th>时间</th><th>操作</th></tr>
+          <tr><th>流程</th><th>任务</th><th>标题</th><th>发起人</th><th>表单</th><th>时间</th><th>操作</th></tr>
         </thead>
         <tbody>
           <tr v-for="t in rows" :key="t.id" :class="{ 'jf-row-flash': highlight === t.id }">
             <td>{{ t.processDefineDisplayName || '-' }}</td>
             <td><strong>{{ t.displayName }}</strong></td>
-            <td class="jf-muted">{{ t.formKey || '-' }}</td>
+            <td>{{ rowTitle(t) }}</td>
+            <td class="jf-muted">{{ rowInitiator(t) }}</td>
+            <td class="jf-muted">{{ formLabel(t.formKey) }}</td>
             <td class="jf-muted">{{ fmtTime(t.createTime, true) }}</td>
             <td>
               <div class="jf-btn-row">
@@ -53,13 +55,19 @@ import JfIcon from '../ui/JfIcon.vue'
 import ApproveDrawer from '../drawers/ApproveDrawer.vue'
 import InstanceDetailDrawer from '../drawers/InstanceDetailDrawer.vue'
 import { useJeeflowUi } from '../provider'
-import { fmtTime } from '../helpers'
+import { fmtTime, rowTitle, rowInitiator } from '../helpers'
 import { toast } from '../toast'
 import type { TaskRow } from '../types'
 
 defineOptions({ name: 'JfTodoPage' })
 
-const { api } = useJeeflowUi()
+const { api, getForm } = useJeeflowUi()
+
+/** 表单列：宿主注册过的才只显 formKey，未注册要标出来——否则满列裸 key，看不出能不能办理 */
+function formLabel(k?: string | null): string {
+  if (!k) return '-'
+  return getForm(k) ? k : `${k}（未注册）`
+}
 
 const loading = ref(false)
 const rows = ref<TaskRow[]>([])

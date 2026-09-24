@@ -13,17 +13,18 @@
     <div v-if="loading" class="jf-loading">加载中...</div>
     <template v-else>
       <table v-if="rows.length" class="jf-table">
-        <thead><tr><th>流程</th><th>实例状态</th><th>阅读状态</th><th>发起人</th><th>时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>流程</th><th>标题</th><th>实例状态</th><th>阅读状态</th><th>发起人</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="i in rows" :key="i.id">
             <td>{{ i.displayName || i.processDefineDisplayName }}</td>
+            <td>{{ rowTitle(i) }}</td>
             <td><JfBadge :type="stateBadgeType(i.state)">{{ stateLabel(i.state) }}</JfBadge></td>
             <td>
               <JfBadge :type="readIds.has(i.id) ? 'done' : 'doing'">
                 {{ readIds.has(i.id) ? '已读' : '未读' }}
               </JfBadge>
             </td>
-            <td>{{ i.operator || '-' }}</td>
+            <td>{{ rowInitiator(i) }}</td>
             <td class="jf-muted">{{ fmtTime(i.createTime, true) }}</td>
             <td>
               <div class="jf-btn-row">
@@ -71,7 +72,7 @@ import JfUserPicker from '../ui/JfUserPicker.vue'
 import JfIcon from '../ui/JfIcon.vue'
 import InstanceDetailDrawer from '../drawers/InstanceDetailDrawer.vue'
 import { useJeeflowUi } from '../provider'
-import { fmtTime, stateLabel, stateBadgeType } from '../helpers'
+import { fmtTime, stateLabel, stateBadgeType, rowTitle, rowInitiator } from '../helpers'
 import { toast } from '../toast'
 import type { InstanceRow } from '../types'
 
