@@ -33,7 +33,7 @@
 
           <h3 class="jf-section-title">申请信息</h3>
           <component
-            v-if="bizSource === 'registered'"
+            v-if="bizSource === 'registered' && !bizDataEmpty"
             :is="registeredForm"
             ref="bizFormRef"
             v-model="bizFormData"
@@ -50,11 +50,7 @@
             field-prefix="f_"
             empty-hint="该流程未配置表单字段，无可回显内容"
           />
-          <div v-else class="jf-muted jf-form-hint">
-            {{ bizSource === 'unregistered'
-              ? `未注册申请表单「${applyFormKey}」，宿主 registerForm 后即可回显`
-              : '该流程未配置申请表单（节点属性 form 为空）' }}
-          </div>
+          <div v-else class="jf-muted jf-form-hint">{{ bizHint }}</div>
 
           <div class="jf-detail-actions">
             <button
@@ -195,6 +191,13 @@ const bizSource = computed<FormSource>(() =>
     schema: parsedSchema.value,
     dataCount: Object.keys(bizFormData.value).length,
   }))
+/** 命中注册组件但实例压根没有 f_* 数据（且不是重填态）：铺一串 "-" 仍会被读成"没回显"，改给一行说明 */
+const bizDataEmpty = computed(() => !Object.keys(bizFormData.value).length && !reSubmitable.value)
+const bizHint = computed(() => {
+  if (bizSource.value === 'unregistered') return `未注册申请表单「${applyFormKey.value}」，宿主 registerForm 后即可回显`
+  if (bizDataEmpty.value) return '该实例发起时未填写业务表单字段（无 f_* 数据）'
+  return '该流程未配置申请表单（节点属性 form 为空）'
+})
 const permMap = computed(() =>
   buildPermissionMap(graph.value, firstTaskNode(graph.value), parsedSchema.value?.columns))
 const bizLabels = computed(() => schemaFieldLabels(graph.value))

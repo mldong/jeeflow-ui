@@ -9,7 +9,7 @@
           <template v-if="!applyAreaRedundant">
             <h3 class="jf-section-title">申请信息</h3>
             <component
-              v-if="bizSource === 'registered'"
+              v-if="bizSource === 'registered' && !bizDataEmpty"
               :is="applyFormComponent"
               ref="bizFormRef"
               v-model="bizFormData"
@@ -26,11 +26,7 @@
               field-prefix="f_"
               empty-hint="该流程未配置表单字段，无可回显内容"
             />
-            <div v-else class="jf-muted jf-form-hint">
-              {{ bizSource === 'unregistered'
-                ? `未注册申请表单「${applyFormKey}」，宿主 registerForm 后即可回显`
-                : '该流程未配置申请表单（节点属性 form 为空）' }}
-            </div>
+            <div v-else class="jf-muted jf-form-hint">{{ bizHint }}</div>
           </template>
 
           <component
@@ -280,6 +276,13 @@ const applyAreaRedundant = computed(() =>
   Boolean(taskFormComponent.value)
   && taskFormComponent.value === applyFormComponent.value
   && !Object.keys(bizFormData.value).length)
+/** 命中注册组件但没有 f_* 数据、又不是可编辑态：铺一串 "-" 会被读成"没回显"，改给一行说明 */
+const bizDataEmpty = computed(() => !Object.keys(bizFormData.value).length && bizReadonly.value)
+const bizHint = computed(() => {
+  if (bizSource.value === 'unregistered') return `未注册申请表单「${applyFormKey.value}」，宿主 registerForm 后即可回显`
+  if (bizDataEmpty.value) return '该实例发起时未填写业务表单字段（无 f_* 数据）'
+  return '该流程未配置申请表单（节点属性 form 为空）'
+})
 /** 有 formKey 但宿主未注册 approve 表单：给可读提示，不再静默空白 */
 const taskFormUnregistered = computed(() =>
   !isFirstTaskNode.value && Boolean(taskFormKey.value) && !taskFormComponent.value

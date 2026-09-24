@@ -142,10 +142,15 @@
 textarea.jf-input { resize: vertical; font-family: inherit; }
 
 /* SchemaForm */
-.jf-schema-form { display: flex; flex-wrap: wrap; gap: 0 16px; }
+/* 列间距由子项 padding 承担：gap 会让 50% 宽的两列溢出成单列（实测 2×434+16 > 容器 868） */
+.jf-schema-form { display: flex; flex-wrap: wrap; gap: 0; }
 /* 自定义表单里的小标题要独占一行，否则和第一个字段挤在同一行 */
 .jf-schema-form > .jf-section-title { width: 100%; }
-.jf-schema-form .jf-form-item { width: 100%; }
+.jf-schema-form .jf-form-item { width: 100%; padding-right: 16px; box-sizing: border-box; }
+/* 只读明细：标签与值同行。不支持 :has() 的老浏览器忽略本组规则，退回"标签在上"的旧排版 */
+.jf-schema-form .jf-form-item:has(> .jf-detail-text) { display: flex; align-items: baseline; margin-bottom: 10px; }
+.jf-schema-form .jf-form-item:has(> .jf-detail-text) > .jf-form-label { flex: 0 0 7em; margin-bottom: 0; color: var(--jf-text-2, #888); }
+.jf-schema-form .jf-form-item:has(> .jf-detail-text) > .jf-detail-text { flex: 1 1 auto; min-width: 0; }
 .jf-req { color: var(--jf-danger, #ff4d4f); margin-left: 2px; }
 .jf-form-error { font-size: 12px; color: var(--jf-danger, #ff4d4f); margin-top: 4px; }
 .jf-input:disabled, textarea.jf-input:disabled, select.jf-input:disabled {
