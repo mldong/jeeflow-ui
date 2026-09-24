@@ -1,6 +1,6 @@
 {
   "name": "@mldong/jeeflow-ui",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "homepage": "https://github.com/mldong/jeeflow-ui#readme",
   "repository": {
     "type": "git",
@@ -19,7 +19,9 @@
     },
     "./dist/style.css": "./dist/style.css"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build && vue-tsc --declaration --emitDeclarationOnly --outDir dist"
   },
@@ -35,6 +37,12 @@
     "vue": "^3.4.30",
     "vue-tsc": "^2.0.0"
   },
-  "keywords": ["workflow", "jeeflow", "流程", "工作流", "facade"],
+  "keywords": [
+    "workflow",
+    "jeeflow",
+    "流程",
+    "工作流",
+    "facade"
+  ],
   "license": "Apache-2.0"
 }
