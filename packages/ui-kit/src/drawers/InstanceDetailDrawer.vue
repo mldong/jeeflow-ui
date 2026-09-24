@@ -117,7 +117,7 @@ import { useJeeflowUi } from '../provider'
 import {
   fmtTime, stateLabel, parseSchema, buildPermissionMap, firstTaskNode,
   schemaFieldLabels, extractBizFormData, firstTaskFormKey, isBuiltinSchemaFormKey,
-  resolveFormSource, type FormSource,
+  resolveFormSource, pickExt, pickInstanceExt, type FormSource,
 } from '../helpers'
 import { toast } from '../toast'
 import type { InstanceDetail, HighLightData, ApprovalRecordRow, AssigneeTextRow, NodeProgress } from '../types'
@@ -168,10 +168,17 @@ const reSubmitable = computed(() =>
 )
 const graph = computed(() => data.value?.jsonObject || null)
 const parsedSchema = computed(() => parseSchema(graph.value))
-/** 实例变量全集：detail 响应不带 ext，variables 就是它的正源（列表行上同一份数据叫 ext） */
+/**
+ * 实例变量：ext 优先（引擎按 issues/124 §7 给 detail 补上后即以此为准），variables 只是过渡兜底——
+ * 现网八栈 detail 都还没有 ext，而 formData 只切 f_*，标题 autoGenTitle 与发起人 u_realName 只在
+ * variables 里，所以此刻直接删兜底会让八栈头部同时变空。引擎落地后删掉最后一项即收口。
+ */
 const instVars = computed<Record<string, any>>(() => {
-  const v = data.value?.variables
-  return v && typeof v === 'object' ? v : {}
+  const d = data.value as any
+  for (const cand of [pickExt(d), pickInstanceExt(d), d?.variables]) {
+    if (cand && typeof cand === 'object' && Object.keys(cand).length) return cand
+  }
+  return {}
 })
 const instanceTitle = computed(() =>
   String(instVars.value.autoGenTitle || instVars.value.f_title || data.value?.displayName || '-'))

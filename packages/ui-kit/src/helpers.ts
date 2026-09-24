@@ -294,15 +294,16 @@ export function pickInstanceExt(source: any): Record<string, any> {
 
 /**
  * 从实例/任务响应里抽 f_* 业务表单数据。取数顺序对齐 vben5-wf 消费口径：
- * formData（实例 detail 的 f_* 切片）→ instanceExt（任务行上的实例变量）→ variables（实例 detail 变量全集，
- * 因 detail 响应不带 ext，它是 detail 场景的正源而非兜底）。
+ * formData（实例 detail 的 f_* 切片）→ instanceExt（任务行上的实例变量）。
  *
- * 刻意不读 variable / instanceVariable 原串：八栈出口类型不统一（java/rust/moon/csharp 出 JSON 串，
- * go/python/node/php 出对象），服务端已统一解析为 ext，前端再 parse 等于把类型漂移引进来。
+ * 刻意不读 variable / instanceVariable 原串，也不读 variables 全集：前者八栈出口类型不统一
+ * （java/rust/moon/csharp 出 JSON 串，go/python/node/php 出对象），后者在 moon 栈键名被 camel 化；
+ * 服务端已统一解析为 ext，前端再解析等于把类型漂移引进来。issues/124 §7 已裁定门面出口只留
+ * ext/instanceExt，variables 将随引擎侧收口一并下线。
  */
 export function extractBizFormData(source: any): Record<string, any> {
   if (!source) return {}
-  for (const cand of [pickInstanceFormData(source), pickInstanceExt(source), objOrEmpty(source.variables)]) {
+  for (const cand of [pickInstanceFormData(source), pickInstanceExt(source)]) {
     const picked = onlyPrefixed(cand, 'f_')
     if (Object.keys(picked).length) return picked
   }
@@ -319,9 +320,9 @@ export function extractTaskFormData(source: any): Record<string, any> {
   return {}
 }
 
-/** 列表行取变量：任务行是 instanceExt→ext，实例行是 ext，detail 是 variables */
+/** 列表行取变量：任务行是 instanceExt→ext，实例行是 ext（detail 场景不走本函数，见 issues/124 §7） */
 function rowVarSources(row: any): Record<string, any>[] {
-  return [pickInstanceExt(row), pickExt(row), objOrEmpty(row?.variables)]
+  return [pickInstanceExt(row), pickExt(row)]
 }
 
 /**
