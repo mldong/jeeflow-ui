@@ -58,11 +58,11 @@ function operatorOf(r: ApprovalRecordRow): string {
 }
 
 function submitOf(r: ApprovalRecordRow): number | string | null | undefined {
-  return r.ext?.submitType ?? r.variable?.submitType
+  return r.ext?.submitType
 }
 
 function commentOf(r: ApprovalRecordRow): string {
-  const v = r.variable?.tf_approvalComment ?? r.ext?.tf_approvalComment
+  const v = r.ext?.tf_approvalComment
   return v != null && v !== '' ? String(v) : '-'
 }
 

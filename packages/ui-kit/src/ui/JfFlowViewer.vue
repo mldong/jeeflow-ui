@@ -7,9 +7,7 @@
       mode="dingtalk"
       :viewer="true"
       :high-light="highLight ?? undefined"
-      :assignee-text-data="assigneeTextData"
       :theme="theme"
-      @on-init="onInit"
     />
     <div v-else-if="ready && !localGraphData" class="jf-viewer-empty">无流程图数据</div>
     <!-- 高亮图例 -->
@@ -22,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import FlowDesigner from 'mldong-flow-designer-dingtalk'
 import 'mldong-flow-designer-dingtalk/lib/style.css'
 import type { FlowGraph, HighLightData, AssigneeTextRow } from '../types'
@@ -32,30 +30,17 @@ defineOptions({ name: 'JfFlowViewer' })
 const props = withDefaults(defineProps<{
   graphData?: FlowGraph | Record<string, any> | null
   highLight?: HighLightData | Record<string, any> | null
-  /** 节点处理人回显（getAssigneeTextData，对齐 vben5 assignee-text-data） */
+  /**
+   * 已废弃：引擎侧 value 是参与者用户 id，不得当节点定位键（spec 06-facade §4.6 / issues/155）。
+   * 画布上的办理人一律来自 highLight.nodeProgress（按节点名索引渲染），本 prop 不再参与渲染，
+   * 仅为公开包 API 兼容保留。
+   */
   assigneeTextData?: AssigneeTextRow[] | null
   /** 容器高度（默认铺满父容器） */
   height?: string
   /** 主题色覆盖（默认蓝） */
   primaryColor?: string
 }>(), { height: '100%', primaryColor: '#1677ff', assigneeTextData: () => [] })
-
-const lfInstance = ref<any>(null)
-
-function applyAssigneeText() {
-  const rows = props.assigneeTextData
-  if (!rows?.length || !lfInstance.value) return
-  for (const item of rows) {
-    if (item?.value && item?.label) lfInstance.value.updateText?.(item.value, item.label)
-  }
-}
-
-function onInit(lf: any) {
-  lfInstance.value = lf
-  applyAssigneeText()
-}
-
-watch(() => props.assigneeTextData, applyAssigneeText, { deep: true })
 
 const ready = ref(false)
 const localGraphData = computed(() => props.graphData)
