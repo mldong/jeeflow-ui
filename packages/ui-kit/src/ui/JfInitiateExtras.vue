@@ -1,6 +1,6 @@
 <template>
   <div v-if="flags.any" class="jf-extras">
-    <div v-if="flags.selectUser" class="jf-form-item">
+    <div v-if="flags.selectUser && !hideOperator" class="jf-form-item">
       <label class="jf-form-label">指定下一节点处理人</label>
       <JfUserPicker
         :model-value="nextOperators"
@@ -58,6 +58,8 @@ const props = withDefaults(defineProps<{
   graph?: Record<string, any> | null
   taskId?: string | null
   disabled?: boolean
+  /** 直返重提：下一节点由引擎钉死，隐藏"指定下一节点处理人"（抄送/理由/附件照旧） */
+  hideOperator?: boolean
   ccActors?: string[]
   nextOperators?: string[]
   applyReason?: string
@@ -66,6 +68,7 @@ const props = withDefaults(defineProps<{
   graph: null,
   taskId: null,
   disabled: false,
+  hideOperator: false,
   ccActors: () => [],
   nextOperators: () => [],
   applyReason: '',

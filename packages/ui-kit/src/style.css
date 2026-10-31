@@ -91,6 +91,22 @@
 .jf-muted { color: #888; font-size: 13px; }
 /* 表单区无可渲染内容时的可读提示（替代此前的整段静默消失） */
 .jf-form-hint { padding: 10px 12px; border: 1px dashed #ddd; border-radius: 6px; margin: 4px 0 8px; font-size: 13px; color: #888; }
+/* 退回修改·重提直返：返回节点只读提示（不可改，隐藏下一节点处理人） */
+.jf-reapply-hint {
+  padding: 8px 12px; margin: 4px 0 10px; border-radius: 6px; font-size: 13px;
+  color: var(--jf-primary, #1677ff); background: var(--jf-primary-soft, #f0f7ff);
+  border: 1px solid var(--jf-primary-soft-border, #bae0ff);
+}
+/* 实例详情：逐条申请待办（各自一个返回目标 + 各自的重新提交） */
+.jf-reapply-panel { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 14px; }
+.jf-reapply-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--jf-border, #f0f0f0); border-radius: 8px;
+  background: var(--jf-hover-bg, #fafbfc);
+}
+.jf-reapply-row-info { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #666; }
+.jf-reapply-row-node { font-weight: 600; color: var(--jf-text, #1f1f1f); }
+.jf-reapply-row-target { color: var(--jf-primary, #1677ff); }
 
 /* 分页 */
 .jf-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; }

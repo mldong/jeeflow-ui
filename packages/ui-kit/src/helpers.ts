@@ -2,6 +2,8 @@
  * 展示辅助（@mldong/jeeflow-ui）：状态标签/时间格式化（规范 06 §2.9 枚举）
  */
 
+import type { ReapplyTarget } from './types'
+
 /** 实例状态 → 展示标签 */
 export function stateLabel(s: number | string | null | undefined): string {
   const v = String(s)
@@ -290,6 +292,69 @@ export function pickExt(source: any): Record<string, any> {
 /** 实例变量对象：任务行上的 instanceExt */
 export function pickInstanceExt(source: any): Record<string, any> {
   return objOrEmpty(source?.instanceExt)
+}
+
+/** 流程图节点的显示名（找不到节点时回落节点编码） */
+export function nodeDisplayName(graph: any, node: string): string {
+  if (!node) return ''
+  const found = (graph?.nodes || []).find((n: any) =>
+    n?.id === node || n?.properties?.name === node)
+  const text = found?.text?.value || found?.properties?.displayName || found?.properties?.name
+  return String(text || node)
+}
+
+/** 投影形态归一：字符串＝节点编码；对象取 node/sourceNode 等编码 + displayName 等显示名 */
+function reapplyTargetFromProjection(raw: any, graph: any): ReapplyTarget | null {
+  if (typeof raw === 'string') {
+    const node = raw.trim()
+    return node ? { node, displayName: nodeDisplayName(graph, node) } : null
+  }
+  if (!raw || typeof raw !== 'object') return null
+  const node = String(raw.node ?? raw.sourceNode ?? raw.source_node ?? raw.nodeName
+    ?? raw.node_name ?? raw.name ?? raw.code ?? '').trim()
+  if (!node) return null
+  const display = String(raw.displayName ?? raw.display_name ?? raw.nodeDisplayName
+    ?? raw.label ?? raw.title ?? '').trim()
+  const sid = raw.sourceTaskId ?? raw.source_task_id ?? raw.taskId
+  return {
+    node,
+    displayName: display || nodeDisplayName(graph, node),
+    sourceTaskId: sid != null && sid !== '' ? String(sid) : undefined,
+  }
+}
+
+/**
+ * 「退回修改、重提直返」的返回目标。任务行/任务详情都适用：
+ *  1. 只读投影 `reapplyTarget`（任务行或 ext 上，字段形态宽松）；
+ *  2. 引擎控制键 `ext._reapplyContext`（mode=RETURN_TO_SOURCE，键 `sourceNode`/`sourceTaskId`）。
+ * 两条都不命中 ⇒ null（＝普通重新提交，沿用申请节点出边）。
+ */
+export function pickReapplyTarget(source: any, graph?: any): ReapplyTarget | null {
+  if (!source) return null
+  const ext = pickExt(source)
+  for (const cand of [source.reapplyTarget, ext.reapplyTarget]) {
+    const t = reapplyTargetFromProjection(cand, graph)
+    if (t) return t
+  }
+  const ctx = ext._reapplyContext ?? source._reapplyContext
+  if (!ctx || typeof ctx !== 'object') return null
+  const mode = String(ctx.mode ?? '').trim()
+  if (mode && mode !== 'RETURN_TO_SOURCE') return null
+  return reapplyTargetFromProjection(
+    { sourceNode: ctx.sourceNode ?? ctx.source_node, sourceTaskId: ctx.sourceTaskId ?? ctx.source_task_id },
+    graph,
+  )
+}
+
+/**
+ * 直返重提不得携带"下一节点处理人"覆写：服务端本就忽略，契约要求不发。
+ * 一并清掉 `tf_isAssignNextNodeOperator`（勾选标记）与实例表单里的 `f_nextNodeOperator`。
+ */
+export function stripNextOperatorKeys(form: Record<string, unknown>): Record<string, unknown> {
+  for (const k of Object.keys(form)) {
+    if (/nextnodeoperator$/i.test(k)) delete form[k]
+  }
+  return form
 }
 
 /**

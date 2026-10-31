@@ -64,12 +64,23 @@
               class="jf-btn jf-btn--ghost"
               @click="ccVisible = true"
             >抄送</button>
-            <button
-              v-if="reSubmitable"
-              class="jf-btn jf-btn--primary"
-              :disabled="acting"
-              @click="reSubmit"
-            >重新提交</button>
+          </div>
+
+          <!-- 申请待办：并行分支可能退回出多条，每条各自一个返回目标、各自提交（提交选中的那条任务 id） -->
+          <div v-if="applyTasks.length" class="jf-reapply-panel">
+            <div v-for="t in applyTasks" :key="t.id" class="jf-reapply-row">
+              <div class="jf-reapply-row-info">
+                <span class="jf-reapply-row-node">{{ t.displayName || t.taskName }}</span>
+                <span v-if="targetOf(t)" class="jf-reapply-row-target">
+                  重新提交后返回：{{ targetOf(t)!.displayName }}
+                </span>
+              </div>
+              <button
+                class="jf-btn jf-btn--primary"
+                :disabled="acting"
+                @click="reSubmit(t)"
+              >重新提交</button>
+            </div>
           </div>
         </div>
 
@@ -117,10 +128,12 @@ import { useJeeflowUi } from '../provider'
 import {
   fmtTime, stateLabel, parseSchema, buildPermissionMap, firstTaskNode,
   schemaFieldLabels, extractBizFormData, firstTaskFormKey, isBuiltinSchemaFormKey,
-  resolveFormSource, pickExt, pickInstanceExt, type FormSource,
+  resolveFormSource, pickExt, pickInstanceExt, pickReapplyTarget, stripNextOperatorKeys,
+  type FormSource,
 } from '../helpers'
 import { toast } from '../toast'
-import type { InstanceDetail, HighLightData, ApprovalRecordRow, AssigneeTextRow, NodeProgress } from '../types'
+import { SubmitType } from '../types'
+import type { InstanceDetail, HighLightData, ApprovalRecordRow, AssigneeTextRow, NodeProgress, TaskRow, ReapplyTarget } from '../types'
 
 defineOptions({ name: 'JfInstanceDetailDrawer' })
 
@@ -163,9 +176,13 @@ const title = computed(() => {
 })
 
 const activeTaskList = computed(() => data.value?.activeTaskList ?? [])
-const reSubmitable = computed(() =>
-  Boolean(activeTaskList.value.find((t) => t.ext?.isFirstTaskNode))
-)
+/**
+ * 申请待办（可重新提交的那几条）：并行分支各自退回时会同时存在多条，**不能只认第一条**——
+ * 每条提交都必须带自己那条任务的 id（服务端按任务上的 `_reapplyContext` 决定回哪）。
+ */
+const applyTasks = computed<TaskRow[]>(() =>
+  activeTaskList.value.filter((t) => Boolean(t.ext?.isFirstTaskNode)))
+const reSubmitable = computed(() => applyTasks.value.length > 0)
 const graph = computed(() => data.value?.jsonObject || null)
 const parsedSchema = computed(() => parseSchema(graph.value))
 /**
@@ -208,6 +225,11 @@ const bizHint = computed(() => {
 const permMap = computed(() =>
   buildPermissionMap(graph.value, firstTaskNode(graph.value), parsedSchema.value?.columns))
 const bizLabels = computed(() => schemaFieldLabels(graph.value))
+
+/** 某条申请待办的重提返回目标（直返才有；普通重提回落申请节点出边 ⇒ null） */
+function targetOf(t: TaskRow): ReapplyTarget | null {
+  return pickReapplyTarget(t, graph.value)
+}
 
 const assigneeText = computed(() =>
   assigneeRows.value.map((r) => r.label || r.value).filter(Boolean).join('、'))
@@ -280,9 +302,12 @@ async function withdraw() {
   }
 }
 
-async function reSubmit() {
-  const task = activeTaskList.value.find((t) => t.ext?.isFirstTaskNode)
-  if (!task) return
+/**
+ * 重新提交**选中的那条**申请待办（不能用"第一条申请任务"——并行分支可能退回出多条）。
+ * submitType 恒为 5；直返待办不派"下一节点处理人"（服务端本就忽略），普通重提保持既有参数面。
+ */
+async function reSubmit(task: TaskRow) {
+  if (!task?.id) return
   const err = bizFormRef.value?.validate?.()
   if (err) {
     toast.error(err)
@@ -295,7 +320,8 @@ async function reSubmit() {
       if (v === '' || v == null) continue
       form[k.startsWith('f_') ? k : `f_${k}`] = v
     }
-    await api.processTask.execute(task.id, 5, form)
+    if (targetOf(task)) stripNextOperatorKeys(form)
+    await api.processTask.execute(task.id, SubmitType.RE_APPLY, form)
     toast.success('已重新提交')
     emit('changed')
     await reload()

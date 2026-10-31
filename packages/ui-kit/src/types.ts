@@ -115,6 +115,22 @@ export interface InstanceRow {
   updateUser?: string | null
 }
 
+/**
+ * 「退回修改、重提直返」的只读返回目标。
+ *
+ * 引擎侧真相在任务变量的保留键 `_reapplyContext`（内部键，ext 出口豁免 camel，原样透出）：
+ * `{mode:"RETURN_TO_SOURCE", sourceTaskId, sourceNode, branch:[...]}`。
+ * 门面若额外投影出 `reapplyTarget`，形如 `{node, displayName}`；两者都认，投影优先。
+ */
+export interface ReapplyTarget {
+  /** 来源节点编码（`_reapplyContext.sourceNode`） */
+  node: string
+  /** 来源节点显示名（投影值优先，缺省按流程图节点文本回填，再退节点编码） */
+  displayName: string
+  /** 退回来源任务 id（投影可能不给） */
+  sourceTaskId?: string
+}
+
 /** 任务行（taskVo，taskDetail/todoList/doneList 通用） */
 export interface TaskRow {
   id: string
@@ -130,6 +146,8 @@ export interface TaskRow {
   taskActorIdList?: string[]
   taskFormData?: Record<string, any>   // tf_* 任务表单数据（带前缀+去前缀副本）
   ext?: Record<string, any>            // 任务变量，为空回退实例变量
+  /** 直返返回目标（门面可选投影；缺失时按 ext._reapplyContext 解析） */
+  reapplyTarget?: ReapplyTarget | string | null
   instanceExt?: Record<string, any> | null
   finishTime?: string | null
   expireTime?: string | null

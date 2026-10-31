@@ -41,8 +41,13 @@
 
           <template v-if="!readonly && isDoing">
             <template v-if="isFirstTaskNode">
+              <!-- 退回修改·重提直返：返回节点由引擎钉死，只给只读提示，不给"下一节点处理人" -->
+              <div v-if="reapplyTarget" class="jf-reapply-hint">
+                重新提交后返回：<strong>{{ reapplyTarget.displayName }}</strong>
+              </div>
               <JfInitiateExtras
                 :graph="graph"
+                :hide-operator="Boolean(reapplyTarget)"
                 v-model:cc-actors="ccActors"
                 v-model:next-operators="nextOperators"
                 v-model:apply-reason="applyReason"
@@ -153,6 +158,7 @@ import {
   parseSchema, buildPermissionMap, findTaskNode, firstTaskNode, firstTaskFormKey,
   resolveActionBtns, isBuiltinSchemaFormKey, resolveFormSource,
   schemaFieldLabels, extractBizFormData, extractTaskFormData,
+  pickReapplyTarget, stripNextOperatorKeys,
   type ActionBtnKey, type FormSource,
 } from '../helpers'
 import { toast } from '../toast'
@@ -218,6 +224,11 @@ const currentTaskNode = computed(() => {
   return findTaskNode(graph.value, t.taskName)
     || { properties: { ...(t as any).taskModel, field: (t as any).taskModel?.ext || (t as any).taskModel?.field } }
 })
+/**
+ * 直返返回目标（退回修改·重提直返）：只读，取自门面投影 reapplyTarget 或任务变量 `_reapplyContext`。
+ * 有值时重提走 submitType=5 且不派"下一节点处理人"；无值仍是普通重新提交（申请节点出边）。
+ */
+const reapplyTarget = computed(() => pickReapplyTarget(task.value, graph.value))
 const parsedSchema = computed(() => parseSchema(graph.value))
 const permMap = computed(() =>
   buildPermissionMap(graph.value, currentTaskNode.value, parsedSchema.value?.columns))
@@ -375,12 +386,19 @@ function collectBiz(): Record<string, unknown> {
   return form
 }
 
-async function doExecute(submitType: number, extra: Record<string, unknown> = {}) {
+async function doExecute(
+  submitType: number,
+  extra: Record<string, unknown> = {},
+  options: { omitNextOperator?: boolean } = {},
+) {
   if (!props.taskId) return
   submitting.value = true
   try {
     const extraForm = (!isFirstTaskNode.value && graph.value?.enableFieldPerm) ? collectBiz() : {}
-    await api.processTask.execute(props.taskId, submitType as any, { ...collectTf(), ...extraForm, ...extra })
+    const payload: Record<string, unknown> = { ...collectTf(), ...extraForm, ...extra }
+    // 直返重提：下一节点由引擎钉死，operator 覆写参数一个都不发（服务端本就忽略）
+    if (options.omitNextOperator) stripNextOperatorKeys(payload)
+    await api.processTask.execute(props.taskId, submitType as any, payload)
     toast.success('办理成功')
     emit('changed')
     emit('update:visible', false)
@@ -397,7 +415,8 @@ async function doReApply() {
     toast.error(err)
     return
   }
-  await doExecute(SubmitType.RE_APPLY, collectBiz())
+  // submitType=5 恒定；是否剥 operator 取决于本待办有没有直返目标
+  await doExecute(SubmitType.RE_APPLY, collectBiz(), { omitNextOperator: Boolean(reapplyTarget.value) })
 }
 
 function doCountersignDisagree() {
