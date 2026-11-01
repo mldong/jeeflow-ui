@@ -53,6 +53,12 @@ jobs:
   publish:
     name: Publish @mldong/jeeflow-ui to npm
     runs-on: ubuntu-latest
+    # npm Trusted Publishing（OIDC）：id-token 让 Actions 领一次性身份令牌，
+    # npm 按包页面登记的"可信发布者"（本仓 + 本文件）当场铸短期发布凭证 ⇒ 仓里不存长期 token。
+    # 撤销这条路＝改回 env NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 并去掉 id-token。
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -62,6 +68,11 @@ jobs:
         with:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
+      # node 22 自带 npm 10.9.x，低于 Trusted Publishing 要求的 11.5.1 ⇒ 显式抬代次
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@11
+      - name: Show toolchain
+        run: node --version && npm --version
       - name: Install dependencies
         run: pnpm install
       - name: Build ui-kit
@@ -79,5 +90,3 @@ jobs:
       - name: Publish to npm
         working-directory: packages/ui-kit
         run: npm publish --access=public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
