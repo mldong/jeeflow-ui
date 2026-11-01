@@ -70,6 +70,7 @@
       <div class="jf-designer-body">
         <FlowDesigner
           v-if="designing"
+          ref="designerRef"
           v-model:value="designJson"
           mode="dingtalk"
           @on-save="handleDesignerSave"
@@ -109,6 +110,7 @@ const design = ref<DesignRow & { jsonObject?: any } | null>(null)
 const designName = ref('')
 const designDisplayName = ref('')
 const designJson = ref<any>(null)
+const designerRef = ref<{ getDesignerApi?: () => { getGraphData?: () => any } } | null>(null)
 const saving = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
 
@@ -238,7 +240,9 @@ async function handleDesignerSave(data: any) {
 /** 保存草稿：以当前画布内容入库（未进设计器时仅保存基本信息） */
 async function saveDraft() {
   if (designJson.value) {
-    await handleDesignerSave(designJson.value)
+    // 设计器属性面板提交只写内部树，刻意不往 v-model 同步（DingTalkDesigner 的 closeEditPanel 不调 syncToGraph）
+    // ⇒ 直接存 v-model 会把面板里改过的节点属性（含 reapplyMode）整批丢掉，保存前向设计器要现算数据
+    await handleDesignerSave(designerRef.value?.getDesignerApi?.()?.getGraphData?.() ?? designJson.value)
   } else {
     saving.value = true
     try {
