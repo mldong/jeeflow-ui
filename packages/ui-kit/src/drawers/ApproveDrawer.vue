@@ -65,6 +65,9 @@
               <JfInitiateExtras
                 :graph="graph"
                 :task-id="taskId"
+                :add-sign-allowed="allowAddSign"
+                v-model:add-sign-checked="addSignChecked"
+                v-model:add-sign-operators="addSignOperators"
                 v-model:cc-actors="ccActors"
                 v-model:next-operators="nextOperators"
               />
@@ -158,7 +161,7 @@ import {
   parseSchema, buildPermissionMap, findTaskNode, firstTaskNode, firstTaskFormKey,
   resolveActionBtns, isBuiltinSchemaFormKey, resolveFormSource,
   schemaFieldLabels, extractBizFormData, extractTaskFormData,
-  pickReapplyTarget, stripNextOperatorKeys,
+  pickReapplyTarget, stripNextOperatorKeys, nodeAllowsAddSign,
   type ActionBtnKey, type FormSource,
 } from '../helpers'
 import { toast } from '../toast'
@@ -200,6 +203,8 @@ const actorIds = ref<string[]>([])
 const actorSaving = ref(false)
 const ccActors = ref<string[]>([])
 const nextOperators = ref<string[]>([])
+const addSignChecked = ref(false)
+const addSignOperators = ref<string[]>([])
 const applyReason = ref('')
 const attachment = ref('')
 
@@ -229,6 +234,25 @@ const currentTaskNode = computed(() => {
  * 有值时重提走 submitType=5 且不派"下一节点处理人"；无值仍是普通重新提交（申请节点出边）。
  */
 const reapplyTarget = computed(() => pickReapplyTarget(task.value, graph.value))
+/**
+ * 后加签（可重复）显隐闸：当前节点 `properties.allowAddSign` 为真才出现「加签给下一位」组。
+ * 读的是抽屉里已载的流程定义 JSON（graph），不依赖后端投影；首节点/直返重提一律不开
+ * （规范 02 §4.3 禁止首任务节点配该开关，申请节点的办理是发起/重提语义）。
+ */
+const allowAddSign = computed(() =>
+  !isFirstTaskNode.value && !reapplyTarget.value
+  && nodeAllowsAddSign(graph.value, task.value?.taskName))
+// 两组互斥（规范 06 §2.7：tf_addSignOperators 与 tf_nextNodeOperator 同传服务端报错）——
+// 勾其一则另一组整组隐藏并清空值；隐藏不等于值消失，提交侧还要再删一次键（见 collectTf）
+watch(addSignChecked, (checked) => {
+  if (checked && nextOperators.value.length) nextOperators.value = []
+})
+watch(nextOperators, (list) => {
+  if (list.length && (addSignChecked.value || addSignOperators.value.length)) {
+    addSignChecked.value = false
+    addSignOperators.value = []
+  }
+})
 const parsedSchema = computed(() => parseSchema(graph.value))
 const permMap = computed(() =>
   buildPermissionMap(graph.value, currentTaskNode.value, parsedSchema.value?.columns))
@@ -312,6 +336,8 @@ watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
   actorIds.value = []
   ccActors.value = []
   nextOperators.value = []
+  addSignChecked.value = false
+  addSignOperators.value = []
   applyReason.value = ''
   attachment.value = ''
   activeKey.value = 'detail'
@@ -369,7 +395,15 @@ function collectTf(): Record<string, unknown> {
     tf.tf_approvalComment = comment.value.trim()
   }
   if (ccActors.value.length) tf.tf_ccActors = ccActors.value
-  if (nextOperators.value.length) tf.tf_nextNodeOperator = nextOperators.value
+  // 「加签给下一位」与「指定下一节点处理人」互斥（规范 06 §2.7，服务端同传报错是权威兜底）：
+  // 未启用那一组的键一律删掉——整组隐藏不等于值消失，回显与残留都可能把它带进 payload
+  if (allowAddSign.value && addSignChecked.value) {
+    if (addSignOperators.value.length) tf.tf_addSignOperators = addSignOperators.value
+    delete tf.tf_nextNodeOperator
+  } else {
+    if (nextOperators.value.length) tf.tf_nextNodeOperator = nextOperators.value
+    delete tf.tf_addSignOperators
+  }
   return tf
 }
 

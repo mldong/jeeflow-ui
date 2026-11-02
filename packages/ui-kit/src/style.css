@@ -218,6 +218,9 @@ textarea.jf-input { resize: vertical; font-family: inherit; }
 .jf-timeline__dot--info { background: #1677ff; }
 .jf-timeline__head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .jf-timeline__meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; font-size: 13px; }
+.jf-timeline__extra { margin-top: 4px; font-size: 12px; color: var(--jf-text-2, #888); }
+.jf-checkbox { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.jf-checkbox input[type="checkbox"] { width: auto; margin: 0; }
 
 /* Drawer tab panes：流程图铺满 Tab 剩余高度（不再写死 52vh/480px） */
 .jf-pane-flow {

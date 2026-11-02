@@ -294,6 +294,45 @@ export function pickInstanceExt(source: any): Record<string, any> {
   return objOrEmpty(source?.instanceExt)
 }
 
+/**
+ * 节点是否开了「后加签（可重复）」：直接读流程定义 JSON 里该任务节点的 `properties.allowAddSign`
+ * （规范 02 §4.3；办理抽屉本就载着 graph，无需后端再投影一枚布尔）。
+ * 节点定位不到 ⇒ 一律按"没开"处理，界面与改动前逐字一致。
+ */
+export function nodeAllowsAddSign(graph: any, taskName?: string | null): boolean {
+  const allow = findTaskNode(graph, taskName)?.properties?.allowAddSign
+  return allow === true || allow === 1 || allow === '1' || allow === 'true'
+}
+
+/**
+ * 后加签账本（规范 06 §2.7 `tf_addSignHistory`）：任务变量上的追加式 List<Map>，
+ * 每项 `{round, fromActor, toActors, time, operator}`。取数位与 `submitType` 同族——
+ * 审批记录行的变量出口是 `ext`，不是任务表单切片 `taskFormData`。
+ * 形态宽松解析（字符串 JSON、缺键、toActors 为逗号串都收），解析失败返回空数组＝不渲染。
+ */
+export function addSignHistoryOf(source: any): Array<Record<string, any>> {
+  const raw = pickExt(source).tf_addSignHistory ?? source?.tf_addSignHistory
+  let list: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      list = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(list)) return []
+  return list.filter((item: any) => item && typeof item === 'object')
+}
+
+/** 账本一行的展示文案：`第 N 轮加签给 X、Y`（无字典服务，与 submitTypeLabel 同族写死） */
+export function addSignHistoryLabel(entry: Record<string, any>): string {
+  const toActors = Array.isArray(entry.toActors)
+    ? entry.toActors.join('、')
+    : String(entry.toActors ?? '').split(',').filter(Boolean).join('、')
+  const round = entry.round != null ? `第${entry.round}轮` : '加签'
+  return `${round}加签给${toActors || '-'}`
+}
+
 /** 流程图节点的显示名（找不到节点时回落节点编码） */
 export function nodeDisplayName(graph: any, node: string): string {
   if (!node) return ''

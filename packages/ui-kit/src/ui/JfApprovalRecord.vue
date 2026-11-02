@@ -15,6 +15,10 @@
               <JfBadge :type="submitBadge(r)">{{ submitTypeLabel(submitOf(r)) }}</JfBadge>
               <span v-if="commentOf(r) !== '-'" class="jf-muted">{{ commentOf(r) }}</span>
             </div>
+            <!-- 后加签账本（tf_addSignHistory）：附加信息行，不占 submitType 徽标的坑 -->
+            <div v-for="(h, hi) in addSignHistoryOf(r)" :key="'as' + hi" class="jf-timeline__extra">
+              {{ addSignHistoryLabel(h) }}<span v-if="h.time"> · {{ h.time }}</span>
+            </div>
           </div>
         </li>
       </ul>
@@ -44,7 +48,7 @@
 
 <script setup lang="ts">
 import JfBadge from './JfBadge.vue'
-import { fmtTime, submitTypeLabel, taskStateBadgeType } from '../helpers'
+import { fmtTime, submitTypeLabel, taskStateBadgeType, addSignHistoryOf, addSignHistoryLabel } from '../helpers'
 import type { ApprovalRecordRow } from '../types'
 
 defineOptions({ name: 'JfApprovalRecord' })

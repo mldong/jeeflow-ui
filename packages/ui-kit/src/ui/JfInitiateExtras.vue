@@ -1,6 +1,6 @@
 <template>
-  <div v-if="flags.any" class="jf-extras">
-    <div v-if="flags.selectUser && !hideOperator" class="jf-form-item">
+  <div v-if="flags.any || addSignAllowed" class="jf-extras">
+    <div v-if="flags.selectUser && !hideOperator && !addSignChecked" class="jf-form-item">
       <label class="jf-form-label">指定下一节点处理人</label>
       <JfUserPicker
         :model-value="nextOperators"
@@ -9,6 +9,27 @@
         :disabled="disabled"
         placeholder="搜索并选择处理人"
         @update:model-value="emit('update:nextOperators', $event)"
+      />
+    </div>
+    <!-- 后加签（可重复）：节点 properties.allowAddSign 为真才出现，是「同意」的附属效果，不是新按钮 -->
+    <div v-if="addSignAllowed && !hideOperator" class="jf-form-item">
+      <label class="jf-form-label jf-checkbox">
+        <input
+          type="checkbox"
+          :disabled="disabled"
+          :checked="addSignChecked"
+          @change="emit('update:addSignChecked', ($event.target as HTMLInputElement).checked)"
+        />
+        加签给下一位
+      </label>
+      <JfUserPicker
+        v-if="addSignChecked"
+        :model-value="addSignOperators"
+        :task-id="taskId"
+        scene="nextOperator"
+        :disabled="disabled"
+        placeholder="搜索并选择加签人（可多选）"
+        @update:model-value="emit('update:addSignOperators', $event)"
       />
     </div>
     <div v-if="flags.cc" class="jf-form-item">
@@ -60,6 +81,12 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   /** 直返重提：下一节点由引擎钉死，隐藏"指定下一节点处理人"（抄送/理由/附件照旧） */
   hideOperator?: boolean
+  /** 当前节点 properties.allowAddSign＝后加签开关（规范 02 §4.3），假则本组完全不出现 */
+  addSignAllowed?: boolean
+  /** "加签给下一位"勾选态（v-model） */
+  addSignChecked?: boolean
+  /** 加签人（多选，v-model） */
+  addSignOperators?: string[]
   ccActors?: string[]
   nextOperators?: string[]
   applyReason?: string
@@ -69,6 +96,9 @@ const props = withDefaults(defineProps<{
   taskId: null,
   disabled: false,
   hideOperator: false,
+  addSignAllowed: false,
+  addSignChecked: false,
+  addSignOperators: () => [],
   ccActors: () => [],
   nextOperators: () => [],
   applyReason: '',
@@ -78,6 +108,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:ccActors': [v: string[]]
   'update:nextOperators': [v: string[]]
+  'update:addSignChecked': [v: boolean]
+  'update:addSignOperators': [v: string[]]
   'update:applyReason': [v: string]
   'update:attachment': [v: string]
 }>()
