@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@mldong/jeeflow-ui": "workspace:*",
-    "mldong-flow-designer-dingtalk": "^3.2.5",
+    "mldong-flow-designer-dingtalk": "^3.2.7",
     "vue": "^3.4.30",
     "vue-router": "^4.4.0"
   },
