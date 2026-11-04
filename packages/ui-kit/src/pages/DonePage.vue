@@ -24,6 +24,7 @@
             <td>
               <div class="jf-btn-row">
                 <button class="jf-btn jf-btn--ghost jf-btn--sm" @click="openTask(t.id)">我的办理</button>
+                <button class="jf-btn jf-btn--ghost jf-btn--sm" :disabled="recalling === t.id" @click="doRecall(t.id)">撤回</button>
                 <button class="jf-btn jf-btn--ghost jf-btn--sm" @click="openDetail(t.processInstanceId)">详情</button>
               </div>
             </td>
@@ -77,6 +78,25 @@ const taskId = ref<string | null>(null)
 function openTask(id: string) {
   taskId.value = id
   taskVisible.value = true
+}
+
+// issues/246 已办撤回：收回自己刚办结的那一手（同节点新行复活重办）。
+// 开关（节点 allowRecall）与窗口（下游整链未办结）都交引擎判——已办行不带节点属性，
+// 前端不重算判据，只把引擎的逐字文案透出来（报错即零写入是引擎侧的契约）。
+const recalling = ref('')
+
+async function doRecall(id: string) {
+  if (!window.confirm('确定撤回这次已办？撤回后该节点会以新行回到我的待办，业务表单与业务数据不回滚。')) return
+  recalling.value = id
+  try {
+    await api.processTask.recall(id)
+    toast.success('已撤回，该节点回到我的待办')
+    await reload()
+  } catch (e) {
+    toast.error((e as Error).message || '撤回失败')
+  } finally {
+    recalling.value = ''
+  }
 }
 
 async function reload() {

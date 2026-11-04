@@ -161,7 +161,7 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<StatsGroupRow[]>('processInstance/stats/group', q),
     },
 
-    // ═══ 流程任务（9 action）═══
+    // ═══ 流程任务（11 action，含 issues/246／247 两枚）═══
     processTask: {
       todoList: (q: PageQuery = {}) =>
         flow<PageResult<TaskRow>>('processTask/todoList', q),
@@ -180,6 +180,12 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<void>('processTask/surrogate', { processTaskId, actorIds }),
       addCandidate: (processTaskId: string, actorIds: string[]) =>
         flow<void>('processTask/addCandidate', { processTaskId, actorIds }),
+      // issues/246 已办撤回：收回自己刚办结的那一手（窗口与开关由引擎判，前端不重算）
+      recall: (processTaskId: string) =>
+        flow<{ processTaskId: string; taskState: number }>('processTask/recall', { processTaskId }),
+      // issues/247 撤回动态会签：清掉未交意见的成员行，是征询态唯一的恢复出口
+      revokeDynamicCountersign: (processTaskId: string, reason?: string) =>
+        flow<void>('processTask/revokeDynamicCountersign', { processTaskId, reason }),
       latest: (processInstanceId: string) =>
         flow<TaskRow | null>('processTask/latest', { processInstanceId }),
     },

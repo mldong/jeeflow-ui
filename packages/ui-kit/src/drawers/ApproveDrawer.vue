@@ -60,6 +60,11 @@
             <template v-else>
               <div class="jf-form-item">
                 <label class="jf-form-label">审批意见</label>
+                <!-- 征询未收齐：讲明白为什么一排按钮点不动、还差几张（issues/247） -->
+                <div v-if="countersignWaiting" class="jf-alert" style="margin-bottom:8px">
+                  动态会签意见未收齐（已提交 {{ Number(countersign?.submitted ?? 0) }}/{{ Number(countersign?.total ?? 0) }}），
+                  办理动作已置灰；如需继续办理，请先撤回动态会签
+                </div>
                 <textarea v-model="comment" class="jf-input" rows="3" placeholder="请输入审批意见（可选）"></textarea>
               </div>
               <JfInitiateExtras
@@ -72,14 +77,16 @@
                 v-model:next-operators="nextOperators"
               />
               <div class="jf-approve-actions">
-                <button v-if="hasBtn('AGREE')" class="jf-btn jf-btn--primary" :disabled="submitting" @click="doExecute(SubmitType.AGREE)">同意</button>
-                <button v-if="hasBtn('REJECT')" class="jf-btn jf-btn--danger" :disabled="submitting" @click="doExecute(SubmitType.REJECT)">拒绝</button>
-                <button v-if="hasBtn('ROLLBACK')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="doExecute(SubmitType.ROLLBACK)">退回上一步</button>
-                <button v-if="hasBtn('ROLLBACK_TO_OPERATOR')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="doExecute(SubmitType.ROLLBACK_TO_OPERATOR)">退回发起人</button>
-                <button v-if="hasBtn('COUNTERSIGN_DISAGREE')" class="jf-btn jf-btn--danger" :disabled="submitting" @click="doCountersignDisagree">会签拒绝</button>
-                <button v-if="hasBtn('JUMP')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="openJump">跳转</button>
+                <button v-if="hasBtn('AGREE')" class="jf-btn jf-btn--primary" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.AGREE)">同意</button>
+                <button v-if="hasBtn('REJECT')" class="jf-btn jf-btn--danger" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.REJECT)">拒绝</button>
+                <button v-if="hasBtn('ROLLBACK')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.ROLLBACK)">退回上一步</button>
+                <button v-if="hasBtn('ROLLBACK_TO_OPERATOR')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.ROLLBACK_TO_OPERATOR)">退回发起人</button>
+                <button v-if="hasBtn('COUNTERSIGN_DISAGREE')" class="jf-btn jf-btn--danger" :disabled="submitting || countersignWaiting" @click="doCountersignDisagree">会签拒绝</button>
+                <button v-if="hasBtn('JUMP')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="openJump">跳转</button>
                 <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="surrogateVisible = true">转办</button>
                 <button v-if="hasBtn('ADD_CANDIDATE')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="addCandidateVisible = true">加签</button>
+                <!-- 征询中（无论收齐与否）都给出唯一恢复出口；未收齐时它是这儿唯一能点的 -->
+                <button v-if="countersignActive" class="jf-btn jf-btn--danger" :disabled="submitting" @click="doRevokeCountersign">撤回动态会签</button>
               </div>
             </template>
           </template>
@@ -242,6 +249,22 @@ const reapplyTarget = computed(() => pickReapplyTarget(task.value, graph.value))
 const allowAddSign = computed(() =>
   !isFirstTaskNode.value && !reapplyTarget.value
   && nodeAllowsAddSign(graph.value, task.value?.taskName))
+/**
+ * 动态会签（征询模式，issues/247）投影：真身在 `processTask/detail` 出口的
+ * `ext.dynamicCountersign = {active, round, total, submitted, actors}`。
+ * 未收齐时主办**全部** submitType 动作置灰（owner 拍"全部置灰＋撤回接口"，暂停语义不做），
+ * 唯一恢复出口是下面的「撤回动态会签」。
+ */
+const countersign = computed<Record<string, any> | null>(() => {
+  const dc = (task.value as any)?.ext?.dynamicCountersign
+  return dc && typeof dc === 'object' ? dc : null
+})
+const countersignActive = computed(() =>
+  !!countersign.value && (countersign.value.active === true || countersign.value.active === 1))
+const countersignWaiting = computed(() => {
+  if (!countersignActive.value) return false
+  return Number(countersign.value?.submitted ?? 0) < Number(countersign.value?.total ?? 0)
+})
 // 两组互斥（规范 06 §2.7：tf_addSignOperators 与 tf_nextNodeOperator 同传服务端报错）——
 // 勾其一则另一组整组隐藏并清空值；隐藏不等于值消失，提交侧还要再删一次键（见 collectTf）
 watch(addSignChecked, (checked) => {
@@ -455,6 +478,25 @@ async function doReApply() {
 
 function doCountersignDisagree() {
   return doExecute(SubmitType.COUNTERSIGN_DISAGREE, { countersignDisagreeFlag: true })
+}
+
+/** 撤回动态会签（issues/247）：清掉未交意见的成员行，闸门恢复。任务没办结 ⇒ 只重读投影，不关抽屉 */
+async function doRevokeCountersign() {
+  if (!props.taskId) return
+  if (!window.confirm('撤回后未交意见的成员行会被清场（已交意见保留），确定撤回本轮动态会签吗？')) return
+  submitting.value = true
+  try {
+    await api.processTask.revokeDynamicCountersign(props.taskId, '主办收回征询')
+    toast.success('已撤回动态会签')
+    task.value = await api.processTask.detail(props.taskId)
+    const instId = task.value?.processInstanceId
+    if (instId) records.value = await api.processInstance.approvalRecord(instId).catch(() => records.value)
+    emit('changed')
+  } catch (e) {
+    toast.error((e as Error).message || '撤回失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 async function doJump(taskName: string) {
