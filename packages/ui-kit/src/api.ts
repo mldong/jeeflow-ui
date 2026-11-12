@@ -161,7 +161,7 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<StatsGroupRow[]>('processInstance/stats/group', q),
     },
 
-    // ═══ 流程任务（12 action，含 issues/115 转办与 246／247 两枚）═══
+    // ═══ 流程任务（13 action，含 issues/115 转办、246／247 两枚与 253 协办）═══
     processTask: {
       todoList: (q: PageQuery = {}) =>
         flow<PageResult<TaskRow>>('processTask/todoList', q),
@@ -190,6 +190,12 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
       // issues/247 撤回动态会签：清掉未交意见的成员行，是征询态唯一的恢复出口
       revokeDynamicCountersign: (processTaskId: string, reason?: string) =>
         flow<void>('processTask/revokeDynamicCountersign', { processTaskId, reason }),
+      // issues/253 动态协办：派生 task_type=1 子行（每人一行），协办办结不驱动流程、主办保留拍板权。
+      // waitCompletion 缺省 false＝主办不等协办办结即可推进；true＝等待闸（未齐时主办办理置灰）。
+      // 与转办（摘原人换人）/加签（追加参与人）语义不同，故独立 action。operator 由 flow 自动注入。
+      aidant: (processTaskId: string, actorIds: string[], reason?: string,
+        waitCompletion?: boolean) =>
+        flow<void>('processTask/aidant', { processTaskId, actorIds, reason, waitCompletion }),
       latest: (processInstanceId: string) =>
         flow<TaskRow | null>('processTask/latest', { processInstanceId }),
     },

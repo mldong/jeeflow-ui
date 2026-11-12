@@ -65,6 +65,12 @@
                   动态会签意见未收齐（已提交 {{ Number(countersign?.submitted ?? 0) }}/{{ Number(countersign?.total ?? 0) }}），
                   办理动作已置灰；如需继续办理，请先撤回动态会签
                 </div>
+                <!-- 协办中（issues/253）：协办行办结不驱动流程，主办保留拍板权；wait=true 未齐时办理置灰 -->
+                <div v-if="aidantActive" class="jf-alert" style="margin-bottom:8px">
+                  协办中（已办结 {{ Number(aidant?.submitted ?? 0) }}/{{ Number(aidant?.total ?? 0) }}）
+                  <template v-if="aidantWaiting">；已开启「等协办办结才允许办理」，办理动作已置灰</template>
+                  <template v-else>；协办行办结不驱动流程，你仍可随时办理拍板</template>
+                </div>
                 <textarea v-model="comment" class="jf-input" rows="3" placeholder="请输入审批意见（可选）"></textarea>
               </div>
               <JfInitiateExtras
@@ -77,13 +83,15 @@
                 v-model:next-operators="nextOperators"
               />
               <div class="jf-approve-actions">
-                <button v-if="hasBtn('AGREE')" class="jf-btn jf-btn--primary" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.AGREE)">同意</button>
-                <button v-if="hasBtn('REJECT')" class="jf-btn jf-btn--danger" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.REJECT)">拒绝</button>
-                <button v-if="hasBtn('ROLLBACK')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.ROLLBACK)">退回上一步</button>
-                <button v-if="hasBtn('ROLLBACK_TO_OPERATOR')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.ROLLBACK_TO_OPERATOR)">退回发起人</button>
-                <button v-if="hasBtn('COUNTERSIGN_DISAGREE')" class="jf-btn jf-btn--danger" :disabled="submitting || countersignWaiting" @click="doCountersignDisagree">会签拒绝</button>
-                <button v-if="hasBtn('JUMP')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="openJump">跳转</button>
+                <button v-if="hasBtn('AGREE')" class="jf-btn jf-btn--primary" :disabled="submitting || countersignWaiting || aidantWaiting" @click="doExecute(SubmitType.AGREE)">同意</button>
+                <button v-if="hasBtn('REJECT')" class="jf-btn jf-btn--danger" :disabled="submitting || countersignWaiting || aidantWaiting" @click="doExecute(SubmitType.REJECT)">拒绝</button>
+                <button v-if="hasBtn('ROLLBACK')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting || aidantWaiting" @click="doExecute(SubmitType.ROLLBACK)">退回上一步</button>
+                <button v-if="hasBtn('ROLLBACK_TO_OPERATOR')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting || aidantWaiting" @click="doExecute(SubmitType.ROLLBACK_TO_OPERATOR)">退回发起人</button>
+                <button v-if="hasBtn('COUNTERSIGN_DISAGREE')" class="jf-btn jf-btn--danger" :disabled="submitting || countersignWaiting || aidantWaiting" @click="doCountersignDisagree">会签拒绝</button>
+                <button v-if="hasBtn('JUMP')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting || aidantWaiting" @click="openJump">跳转</button>
                 <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="transferVisible = true">转办</button>
+                <!-- 协办（issues/253）：独立入口，不寄生在办理动作里。权限码复用 execute（规范 06 §2.6 B 案 OR） -->
+                <button v-if="can(['wf:processTask:execute'])" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="aidantVisible = true">协办</button>
                 <button v-if="hasBtn('ADD_CANDIDATE')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="addCandidateVisible = true">加签</button>
                 <!-- 征询中（无论收齐与否）都给出唯一恢复出口；未收齐时它是这儿唯一能点的 -->
                 <button v-if="countersignActive" class="jf-btn jf-btn--danger" :disabled="submitting" @click="doRevokeCountersign">撤回动态会签</button>
@@ -177,6 +185,45 @@
         <button class="jf-btn jf-btn--primary" :disabled="transferSaving || transferTo.length !== 1" @click="doTransfer">确定</button>
       </div>
     </JfDrawer>
+
+    <!-- 协办（issues/253）：派生 task_type=1 子行把"活"交出去，主办行保留、拍板权不转移。
+         与转办（摘原人换人）/加签（追加参与人）语义不同 ⇒ 独立弹窗＋多选；等不等由 waitCompletion 决定 -->
+    <JfDrawer
+      title="协办（派生协办任务）"
+      :visible="aidantVisible"
+      width="480px"
+      @update:visible="aidantVisible = $event"
+    >
+      <div class="jf-alert" style="margin-bottom:8px">
+        协办是把这活交给别人干：每人派生一条协办任务，协办行办结不驱动流程，你仍是主办、保留拍板权。
+        只想拉人一起办请用「加签」，想把待办整个交出去请用「转办」。
+      </div>
+      <div class="jf-form-item">
+        <label class="jf-form-label">协办人</label>
+        <JfUserPicker
+          v-model="aidantActors"
+          scene="surrogate"
+          placeholder="搜索姓名/工号（可多选）"
+        />
+      </div>
+      <div class="jf-form-item">
+        <label class="jf-form-label">协办原因（可选）</label>
+        <textarea v-model="aidantReason" class="jf-input" rows="3" placeholder="请输入协办原因"></textarea>
+      </div>
+      <div class="jf-form-item">
+        <label class="jf-form-label" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input v-model="aidantWait" type="checkbox" />
+          等协办办结才允许我办理
+        </label>
+        <div class="jf-muted jf-form-hint">
+          缺省关：你可随时办理推进，未办结的协办行随离开节点清场；开启后协办未办结齐时你的办理动作置灰。
+        </div>
+      </div>
+      <div class="jf-drawer-actions">
+        <button class="jf-btn jf-btn--ghost" @click="aidantVisible = false">取消</button>
+        <button class="jf-btn jf-btn--primary" :disabled="aidantSaving || !aidantActors.length" @click="doAidant">确定</button>
+      </div>
+    </JfDrawer>
   </JfDrawer>
 </template>
 
@@ -216,7 +263,7 @@ const emit = defineEmits<{
   changed: []
 }>()
 
-const { api, getForm, config } = useJeeflowUi()
+const { api, getForm, config, can } = useJeeflowUi()
 
 const loading = ref(false)
 const task = ref<TaskDetail | null>(null)
@@ -240,6 +287,12 @@ const transferSaving = ref(false)
 const addCandidateVisible = ref(false)
 const actorIds = ref<string[]>([])
 const actorSaving = ref(false)
+// 动态协办（issues/253）：独立弹窗，多选协办人＋原因（选填）＋等待开关（缺省关）
+const aidantVisible = ref(false)
+const aidantActors = ref<string[]>([])
+const aidantReason = ref('')
+const aidantWait = ref(false)
+const aidantSaving = ref(false)
 const ccActors = ref<string[]>([])
 const nextOperators = ref<string[]>([])
 const addSignChecked = ref(false)
@@ -296,6 +349,25 @@ const countersignActive = computed(() =>
 const countersignWaiting = computed(() => {
   if (!countersignActive.value) return false
   return Number(countersign.value?.submitted ?? 0) < Number(countersign.value?.total ?? 0)
+})
+/**
+ * 动态协办（issues/253）投影：真身在 `processTask/detail` 出口的
+ * `ext.aidant = {active, round, total, submitted, actors, wait}`（规范 06 §2.7）。
+ * 与征询的本质差异：征询强制等收齐，协办**等不等由发起参数 waitCompletion 决定**——
+ * 只有 `wait=true` 且未办结齐时才置灰主办办理动作；`wait=false`（缺省）主办可随时拍板推进。
+ * 协办行办结不驱动流程，主办行保留 ⇒ 派生成功后任务仍 DOING，只重读投影、不关抽屉。
+ */
+const aidant = computed<Record<string, any> | null>(() => {
+  const ad = (task.value as any)?.ext?.aidant
+  return ad && typeof ad === 'object' ? ad : null
+})
+const aidantActive = computed(() =>
+  !!aidant.value && (aidant.value.active === true || aidant.value.active === 1))
+const aidantWaiting = computed(() => {
+  if (!aidantActive.value) return false
+  const wait = aidant.value?.wait
+  if (!(wait === true || wait === 1 || wait === '1' || wait === 'true')) return false
+  return Number(aidant.value?.submitted ?? 0) < Number(aidant.value?.total ?? 0)
 })
 // 两组互斥（规范 06 §2.7：tf_addSignOperators 与 tf_nextNodeOperator 同传服务端报错）——
 // 勾其一则另一组整组隐藏并清空值；隐藏不等于值消失，提交侧还要再删一次键（见 collectTf）
@@ -389,6 +461,9 @@ watch(() => [props.visible, props.taskId] as const, async ([v, id]) => {
   bizFormData.value = {}
   comment.value = ''
   actorIds.value = []
+  aidantActors.value = []
+  aidantReason.value = ''
+  aidantWait.value = false
   ccActors.value = []
   nextOperators.value = []
   addSignChecked.value = false
@@ -573,6 +648,36 @@ async function doTransfer() {
     toast.error((e as Error).message || '转办失败')
   } finally {
     transferSaving.value = false
+  }
+}
+
+/**
+ * 动态协办（issues/253）：派生协办子行，主办行原样保留、任务仍 DOING
+ * ⇒ 照征询撤回那路只重读详情/投影刷新，**不关办理抽屉**（关抽屉是"办结/转办"才走的路）。
+ * operator 由 api.flow 自动注入（config.getOperator），与 transfer/recall 同口径。
+ */
+async function doAidant() {
+  if (!props.taskId || !aidantActors.value.length) return
+  aidantSaving.value = true
+  try {
+    await api.processTask.aidant(
+      props.taskId, aidantActors.value,
+      aidantReason.value.trim() || undefined,
+      aidantWait.value,
+    )
+    toast.success('已派生协办任务')
+    aidantVisible.value = false
+    aidantActors.value = []
+    aidantReason.value = ''
+    aidantWait.value = false
+    task.value = await api.processTask.detail(props.taskId)
+    const instId = task.value?.processInstanceId
+    if (instId) records.value = await api.processInstance.approvalRecord(instId).catch(() => records.value)
+    emit('changed')
+  } catch (e) {
+    toast.error((e as Error).message || '协办失败')
+  } finally {
+    aidantSaving.value = false
   }
 }
 </script>

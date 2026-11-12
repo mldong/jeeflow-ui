@@ -19,6 +19,10 @@
             <div v-for="(h, hi) in addSignHistoryOf(r)" :key="'as' + hi" class="jf-timeline__extra">
               {{ addSignHistoryLabel(h) }}<span v-if="h.time"> · {{ h.time }}</span>
             </div>
+            <!-- 动态协办账本（tf_aidantHistory，issues/253）：同族附加信息行，不占审批意见列 -->
+            <div v-for="(h, hi) in aidantHistoryOf(r)" :key="'ad' + hi" class="jf-timeline__extra">
+              {{ aidantHistoryLabel(h) }}<span v-if="h.time"> · {{ h.time }}</span>
+            </div>
           </div>
         </li>
       </ul>
@@ -48,7 +52,7 @@
 
 <script setup lang="ts">
 import JfBadge from './JfBadge.vue'
-import { fmtTime, submitTypeLabel, taskStateBadgeType, addSignHistoryOf, addSignHistoryLabel } from '../helpers'
+import { fmtTime, submitTypeLabel, taskStateBadgeType, addSignHistoryOf, addSignHistoryLabel, aidantHistoryOf, aidantHistoryLabel } from '../helpers'
 import type { ApprovalRecordRow } from '../types'
 
 defineOptions({ name: 'JfApprovalRecord' })

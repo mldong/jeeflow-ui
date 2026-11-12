@@ -334,6 +334,35 @@ export function addSignHistoryLabel(entry: Record<string, any>): string {
   return `${round}加签给${toActors || '-'}`
 }
 
+/**
+ * 动态协办账本（规范 06 §2.7 `tf_aidantHistory`，issues/253）：落**主办行**变量的追加式 List<Map>，
+ * 每项 `{round, fromActor, toActors, reason, time, operator}`。形状与取数位照 `tf_addSignHistory` 那族
+ * （审批记录行的变量出口是 `ext`，不是任务表单切片 `taskFormData`）；宽松解析同族，失败返回空数组＝不渲染。
+ * 协办不是审批意见 ⇒ 不占 `tf_approvalComment`，只在附加信息行出证。
+ */
+export function aidantHistoryOf(source: any): Array<Record<string, any>> {
+  const raw = pickExt(source).tf_aidantHistory ?? source?.tf_aidantHistory
+  let list: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      list = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(list)) return []
+  return list.filter((item: any) => item && typeof item === 'object')
+}
+
+/** 协办账本一行的展示文案：`第 N 轮协办给 X、Y`（与 addSignHistoryLabel 同族写死） */
+export function aidantHistoryLabel(entry: Record<string, any>): string {
+  const toActors = Array.isArray(entry.toActors)
+    ? entry.toActors.join('、')
+    : String(entry.toActors ?? '').split(',').filter(Boolean).join('、')
+  const round = entry.round != null ? `第${entry.round}轮` : '协办'
+  return `${round}协办给${toActors || '-'}`
+}
+
 /** 流程图节点的显示名（找不到节点时回落节点编码） */
 export function nodeDisplayName(graph: any, node: string): string {
   if (!node) return ''
