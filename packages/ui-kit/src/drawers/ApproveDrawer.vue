@@ -83,7 +83,7 @@
                 <button v-if="hasBtn('ROLLBACK_TO_OPERATOR')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="doExecute(SubmitType.ROLLBACK_TO_OPERATOR)">退回发起人</button>
                 <button v-if="hasBtn('COUNTERSIGN_DISAGREE')" class="jf-btn jf-btn--danger" :disabled="submitting || countersignWaiting" @click="doCountersignDisagree">会签拒绝</button>
                 <button v-if="hasBtn('JUMP')" class="jf-btn jf-btn--ghost" :disabled="submitting || countersignWaiting" @click="openJump">跳转</button>
-                <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="surrogateVisible = true">转办</button>
+                <button class="jf-btn jf-btn--ghost" :disabled="submitting" @click="transferVisible = true">转办</button>
                 <button v-if="hasBtn('ADD_CANDIDATE')" class="jf-btn jf-btn--ghost" :disabled="submitting" @click="addCandidateVisible = true">加签</button>
                 <!-- 征询中（无论收齐与否）都给出唯一恢复出口；未收齐时它是这儿唯一能点的 -->
                 <button v-if="countersignActive" class="jf-btn jf-btn--danger" :disabled="submitting" @click="doRevokeCountersign">撤回动态会签</button>
@@ -129,23 +129,52 @@
     </JfDrawer>
 
     <JfDrawer
-      :title="surrogateVisible ? '转办（指定处理人）' : '加签（追加参与人）'"
-      :visible="surrogateVisible || addCandidateVisible"
+      title="加签（追加参与人）"
+      :visible="addCandidateVisible"
       width="480px"
-      @update:visible="surrogateVisible = $event; addCandidateVisible = $event"
+      @update:visible="addCandidateVisible = $event"
     >
       <div class="jf-form-item">
         <label class="jf-form-label">选择用户</label>
         <JfUserPicker
           v-model="actorIds"
-          :task-id="addCandidateVisible ? taskId : null"
-          :scene="addCandidateVisible ? 'candidate' : 'surrogate'"
+          :task-id="taskId"
+          scene="candidate"
           placeholder="搜索姓名/工号"
         />
       </div>
       <div class="jf-drawer-actions">
-        <button class="jf-btn jf-btn--ghost" @click="surrogateVisible = false; addCandidateVisible = false">取消</button>
+        <button class="jf-btn jf-btn--ghost" @click="addCandidateVisible = false">取消</button>
         <button class="jf-btn jf-btn--primary" :disabled="actorSaving || !actorIds.length" @click="doActors">确定</button>
+      </div>
+    </JfDrawer>
+
+    <!-- 转办（issues/115）：摘掉自己＋换上对方，同一任务不新建。与加签语义相反，故独立弹窗＋单选 -->
+    <JfDrawer
+      title="转办（交给对方办理）"
+      :visible="transferVisible"
+      width="480px"
+      @update:visible="transferVisible = $event"
+    >
+      <div class="jf-alert" style="margin-bottom:8px">
+        转办后这条待办从你的列表移除、由对方办理，你不再参与该任务；只想拉人一起办请用「加签」。
+      </div>
+      <div class="jf-form-item">
+        <label class="jf-form-label">转办给</label>
+        <JfUserPicker
+          v-model="transferTo"
+          single
+          scene="surrogate"
+          placeholder="搜索姓名/工号"
+        />
+      </div>
+      <div class="jf-form-item">
+        <label class="jf-form-label">转办原因（可选）</label>
+        <textarea v-model="transferReason" class="jf-input" rows="3" placeholder="请输入转办原因"></textarea>
+      </div>
+      <div class="jf-drawer-actions">
+        <button class="jf-btn jf-btn--ghost" @click="transferVisible = false">取消</button>
+        <button class="jf-btn jf-btn--primary" :disabled="transferSaving || transferTo.length !== 1" @click="doTransfer">确定</button>
       </div>
     </JfDrawer>
   </JfDrawer>
@@ -187,7 +216,7 @@ const emit = defineEmits<{
   changed: []
 }>()
 
-const { api, getForm } = useJeeflowUi()
+const { api, getForm, config } = useJeeflowUi()
 
 const loading = ref(false)
 const task = ref<TaskDetail | null>(null)
@@ -204,7 +233,10 @@ const bizFormRef = ref<any>(null)
 const jumpVisible = ref(false)
 const jumpLoading = ref(false)
 const jumpNodes = ref<JumpableTaskRow[]>([])
-const surrogateVisible = ref(false)
+const transferVisible = ref(false)
+const transferTo = ref<string[]>([])
+const transferReason = ref('')
+const transferSaving = ref(false)
 const addCandidateVisible = ref(false)
 const actorIds = ref<string[]>([])
 const actorSaving = ref(false)
@@ -508,14 +540,39 @@ async function doActors() {
   if (!props.taskId || !actorIds.value.length) return
   actorSaving.value = true
   try {
-    if (surrogateVisible.value) await api.processTask.surrogate(props.taskId, actorIds.value)
-    else await api.processTask.addCandidate(props.taskId, actorIds.value)
-    surrogateVisible.value = false
+    await api.processTask.addCandidate(props.taskId, actorIds.value)
     addCandidateVisible.value = false
     actorIds.value = []
     emit('changed')
+  } catch (e) {
+    toast.error((e as Error).message || '加签失败')
   } finally {
     actorSaving.value = false
+  }
+}
+
+/**
+ * 转办（issues/115）：fromActor 恒为当前登录人（引擎判 operator == fromActor，
+ * 转别人的待办会被拒），toActor 单选。成功后待办已不在我名下 ⇒ 关抽屉，与办理成功同路。
+ */
+async function doTransfer() {
+  if (!props.taskId || transferTo.value.length !== 1) return
+  transferSaving.value = true
+  try {
+    await api.processTask.transfer(
+      props.taskId, config.getOperator(), transferTo.value[0],
+      transferReason.value.trim() || undefined,
+    )
+    toast.success('已转办')
+    transferVisible.value = false
+    transferTo.value = []
+    transferReason.value = ''
+    emit('changed')
+    emit('update:visible', false)
+  } catch (e) {
+    toast.error((e as Error).message || '转办失败')
+  } finally {
+    transferSaving.value = false
   }
 }
 </script>

@@ -43,6 +43,7 @@ export const SubmitType = {
   JUMP: 4,               // 跳转指定节点（需 taskName）
   RE_APPLY: 5,           // 重新提交
   ROLLBACK_TO_OPERATOR: 6, // 退回发起人
+  TRANSFER: 7,           // 转办留痕档（issues/115）：由 processTask/transfer 写，**不是 execute 的入参**
   COUNTERSIGN_DISAGREE: 20, // 会签拒绝
 } as const
 export type SubmitTypeValue = (typeof SubmitType)[keyof typeof SubmitType]

@@ -161,7 +161,7 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<StatsGroupRow[]>('processInstance/stats/group', q),
     },
 
-    // ═══ 流程任务（11 action，含 issues/246／247 两枚）═══
+    // ═══ 流程任务（12 action，含 issues/115 转办与 246／247 两枚）═══
     processTask: {
       todoList: (q: PageQuery = {}) =>
         flow<PageResult<TaskRow>>('processTask/todoList', q),
@@ -180,6 +180,10 @@ export function createJeeflowApi(cfg: JeeflowApiConfig) {
         flow<void>('processTask/surrogate', { processTaskId, actorIds }),
       addCandidate: (processTaskId: string, actorIds: string[]) =>
         flow<void>('processTask/addCandidate', { processTaskId, actorIds }),
+      // issues/115 转办：摘掉 fromActor ＋ 换上 toActor（同一 taskId，不新建任务）。
+      // 与上面两枚「加签」语义相反——加签只追加、原办理人保留。转给多人请用 addCandidate。
+      transfer: (processTaskId: string, fromActor: string, toActor: string, reason?: string) =>
+        flow<void>('processTask/transfer', { processTaskId, fromActor, toActor, reason }),
       // issues/246 已办撤回：收回自己刚办结的那一手（窗口与开关由引擎判，前端不重算）
       recall: (processTaskId: string) =>
         flow<{ processTaskId: string; taskState: number }>('processTask/recall', { processTaskId }),

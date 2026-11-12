@@ -241,6 +241,7 @@ export function submitTypeLabel(n: number | string | null | undefined): string {
     '4': '跳转',
     '5': '重新提交',
     '6': '退回发起人',
+    '7': '转办',
     '20': '会签拒绝',
   }
   return map[String(n)] ?? (n != null ? String(n) : '-')

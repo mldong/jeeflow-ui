@@ -60,12 +60,15 @@ const props = withDefaults(defineProps<{
   apiHint?: string
   placeholder?: string
   disabled?: boolean
+  /** 单选：选中新人即替换已选（转办这类一对一交接用；多人场景保持默认 false） */
+  single?: boolean
 }>(), {
   modelValue: () => [],
   taskId: null,
   apiHint: '',
   placeholder: '输入姓名/工号搜索',
   disabled: false,
+  single: false,
 })
 
 const emit = defineEmits<{
@@ -155,7 +158,7 @@ async function search() {
 }
 
 function pick(u: Record<string, any>) {
-  const next = [...props.modelValue, u.userId]
+  const next = props.single ? [u.userId] : [...props.modelValue, u.userId]
   emit('update:modelValue', next)
   emit('change', next)
   keyword.value = ''
