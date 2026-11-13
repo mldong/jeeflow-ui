@@ -78,8 +78,6 @@ watch(() => props.records, async (rows) => {
       ...(rows || []).flatMap((r) => actorIdTokens(commentRaw(r))),
       // 协办账本 toActors 存的是用户 ID（作废轮同样带着被清场的那几个人）⇒ 一并送去折名
       ...(rows || []).flatMap((r) => aidantHistoryOf(r).flatMap(aidantActorIds)),
-      // 作废协办子行只有裸 operator 可读 ⇒ 一并送去折名，解析不到仍退回 ID
-      ...(rows || []).filter(abandonedAidantRow).map((r) => String(r.operator ?? '')),
     ].filter(Boolean)),
   )
   if (!ids.length) return
@@ -91,10 +89,10 @@ watch(() => props.records, async (rows) => {
   } catch { /* 回显失败仍显示 userId，不吞信息 */ }
 }, { immediate: true, deep: true })
 
-/** 协办子行随主办离开节点被作废（taskType=1 且 taskState=99）：引擎不给这类行投 u_realName／submitType，
- *  且 operator 恒空（没人办过），原样渲染就是一条空白项。owner 拍定**保留这一行**（作废是事实，不隐藏），
- *  只在展示层补一句实话；被征询的人由同节点账本条目的 toActors 出证（approvalRecord 投影不投 actor 列表，
- *  所以这一行的处理人列留空位，vben5 走 detail.tasks 时能就地折名——两处数据面不同，不是文案不同）。 */
+/** 协办子行随主办离开节点被作废（taskType=1 且 taskState=99）：approvalRecord 投影只给九键，
+ *  这类行既不投 u_realName／submitType、operator 也恒空（没人办过），原样渲染就是一条空白项。
+ *  owner 拍定**保留这一行**（作废是事实，不隐藏），只在展示层补一句实话；被征询的人不硬凑在行上，
+ *  由同节点账本条目的 toActors 出证（aidantHistoryLabel 作废句）。三前端同位文案逐字一致。 */
 function abandonedAidantRow(r: ApprovalRecordRow): boolean {
   return Number(r.taskType) === 1 && String(r.taskState ?? '') === '99'
 }
@@ -114,7 +112,8 @@ function nameOf(id: string | null | undefined): string {
 }
 
 function operatorOf(r: ApprovalRecordRow): string {
-  if (abandonedAidantRow(r)) return nameOf(r.operator)
+  // 作废协办行没有人办过 ⇒ 处理人位留空（不硬出「-」冒充），动作位那句话已经说明它是什么
+  if (abandonedAidantRow(r)) return ''
   return (r.ext?.u_realName || r.operator || '-') as string
 }
 
