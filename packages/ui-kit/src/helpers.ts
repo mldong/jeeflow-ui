@@ -354,12 +354,15 @@ export function aidantHistoryOf(source: any): Array<Record<string, any>> {
   return list.filter((item: any) => item && typeof item === 'object')
 }
 
-/** 协办账本一行的展示文案：`第 N 轮协办给 X、Y`（与 addSignHistoryLabel 同族写死） */
+/** 协办账本一行的展示文案：`第 N 轮协办给 X、Y`（与 addSignHistoryLabel 同族写死）；
+ *  清场那条（`abandoned:true`）动作相反，同形渲染会读成"主办协办了两次"（与 vben aidantLine 同判据） */
 export function aidantHistoryLabel(entry: Record<string, any>): string {
+  const abandoned = entry.abandoned === true || String(entry.abandoned) === 'true'
+  const round = entry.round != null ? `第${entry.round}轮` : '协办'
+  if (abandoned) return `${round}协办已作废（离开节点时未办结）`
   const toActors = Array.isArray(entry.toActors)
     ? entry.toActors.join('、')
     : String(entry.toActors ?? '').split(',').filter(Boolean).join('、')
-  const round = entry.round != null ? `第${entry.round}轮` : '协办'
   return `${round}协办给${toActors || '-'}`
 }
 

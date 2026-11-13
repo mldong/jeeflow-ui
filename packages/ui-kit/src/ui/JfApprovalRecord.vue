@@ -12,7 +12,7 @@
             </div>
             <div class="jf-timeline__meta">
               <span>{{ operatorOf(r) }}</span>
-              <JfBadge :type="submitBadge(r)">{{ submitTypeLabel(submitOf(r)) }}</JfBadge>
+              <JfBadge :type="actionBadge(r)">{{ actionLabel(r) }}</JfBadge>
               <span v-if="commentOf(r) !== '-'" class="jf-muted">{{ commentOf(r) }}</span>
             </div>
             <!-- 后加签账本（tf_addSignHistory）：附加信息行，不占 submitType 徽标的坑 -->
@@ -40,7 +40,7 @@
           <tr v-for="(r, i) in records" :key="'t'+i">
             <td><strong>{{ r.displayName || r.taskName }}</strong></td>
             <td>{{ operatorOf(r) }}</td>
-            <td><JfBadge :type="submitBadge(r)">{{ submitTypeLabel(submitOf(r)) }}</JfBadge></td>
+            <td><JfBadge :type="actionBadge(r)">{{ actionLabel(r) }}</JfBadge></td>
             <td class="jf-muted">{{ commentOf(r) }}</td>
             <td class="jf-muted">{{ fmtTime(r.finishTime, true) }}</td>
           </tr>
@@ -73,7 +73,13 @@ const nameMap = ref<Record<string, string>>({})
 watch(() => props.records, async (rows) => {
   const getUsersByIds = ctx?.adapters?.getUsersByIds
   if (!getUsersByIds) return
-  const ids = Array.from(new Set((rows || []).flatMap((r) => actorIdTokens(commentRaw(r)))))
+  const ids = Array.from(
+    new Set([
+      ...(rows || []).flatMap((r) => actorIdTokens(commentRaw(r))),
+      // 作废协办子行只有裸 operator 可读 ⇒ 一并送去折名，解析不到仍退回 ID
+      ...(rows || []).filter(abandonedAidantRow).map((r) => String(r.operator ?? '')),
+    ].filter(Boolean)),
+  )
   if (!ids.length) return
   try {
     const users = await getUsersByIds(ids)
@@ -83,8 +89,30 @@ watch(() => props.records, async (rows) => {
   } catch { /* 回显失败仍显示 userId，不吞信息 */ }
 }, { immediate: true, deep: true })
 
+/** 协办子行随主办离开节点被作废（taskType=1 且 taskState=99）：引擎不给这类行投 u_realName／submitType，
+ *  原样渲染就是一条空白项。owner 拍定**保留这一行**（作废是事实，不隐藏），只在展示层补一句实话。 */
+function abandonedAidantRow(r: ApprovalRecordRow): boolean {
+  return Number(r.taskType) === 1 && String(r.taskState ?? '') === '99'
+}
+
+function nameOf(id: string | null | undefined): string {
+  const key = String(id ?? '')
+  if (!key) return '-'
+  return nameMap.value[key] || key
+}
+
 function operatorOf(r: ApprovalRecordRow): string {
+  if (abandonedAidantRow(r)) return nameOf(r.operator)
   return (r.ext?.u_realName || r.operator || '-') as string
+}
+
+/** 动作位文案：作废协办行没有 submitType 可投，用一句话顶上，不出裸「-」 */
+function actionLabel(r: ApprovalRecordRow): string {
+  return abandonedAidantRow(r) ? '协办（未办结，离开节点时已作废）' : submitTypeLabel(submitOf(r))
+}
+
+function actionBadge(r: ApprovalRecordRow): 'doing' | 'done' | 'reject' | 'info' {
+  return abandonedAidantRow(r) ? 'info' : submitBadge(r)
 }
 
 function submitOf(r: ApprovalRecordRow): number | string | null | undefined {
