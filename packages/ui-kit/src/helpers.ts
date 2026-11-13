@@ -363,6 +363,23 @@ export function aidantHistoryLabel(entry: Record<string, any>): string {
   return `${round}协办给${toActors || '-'}`
 }
 
+/**
+ * 转办留痕展示层 enrichment（issues/115/253 配套展示缺陷）：引擎按审计真相存 actor ID，
+ * 末跳可读文案 tf_approvalComment 里嵌的是雪花 ID；姓名只在展示层解析（宿主 getUsersByIds），
+ * 解析不到原样保留 ID，不吞信息。雪花形如 19 位数字，日期/时间/轮次等短数字串不会命中。
+ */
+const ACTOR_ID_TOKEN = /\d{15,20}/g
+
+/** 收集文案里的雪花 ID token（去重），供宿主 adapters.getUsersByIds 批量解析 */
+export function actorIdTokens(text: string): string[] {
+  return Array.from(new Set(text.match(ACTOR_ID_TOKEN) ?? []))
+}
+
+/** 展示层把文案里的雪花 ID token 折成姓名；nameOf 解析不到时返回原 token（不吞信息） */
+export function resolveActorIdTokens(text: string, nameOf: (id: string) => string): string {
+  return text.replace(ACTOR_ID_TOKEN, (t) => nameOf(t))
+}
+
 /** 流程图节点的显示名（找不到节点时回落节点编码） */
 export function nodeDisplayName(graph: any, node: string): string {
   if (!node) return ''

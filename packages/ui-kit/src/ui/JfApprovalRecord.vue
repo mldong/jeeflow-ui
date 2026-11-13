@@ -51,15 +51,37 @@
 </template>
 
 <script setup lang="ts">
+import { inject, ref, watch } from 'vue'
 import JfBadge from './JfBadge.vue'
-import { fmtTime, submitTypeLabel, taskStateBadgeType, addSignHistoryOf, addSignHistoryLabel, aidantHistoryOf, aidantHistoryLabel } from '../helpers'
+import { fmtTime, submitTypeLabel, taskStateBadgeType, addSignHistoryOf, addSignHistoryLabel, aidantHistoryOf, aidantHistoryLabel, actorIdTokens, resolveActorIdTokens } from '../helpers'
+import { JeeflowUiKey } from '../adapters'
+import type { JeeflowUiContext } from '../provider'
 import type { ApprovalRecordRow } from '../types'
 
 defineOptions({ name: 'JfApprovalRecord' })
 
-defineProps<{
+const props = defineProps<{
   records: ApprovalRecordRow[]
 }>()
+
+// 宿主适配器可选注入： standalone 使用（无 Provider）时降级为显示原始 ID，不抛错
+const ctx = inject<JeeflowUiContext | null>(JeeflowUiKey, null)
+const nameMap = ref<Record<string, string>>({})
+
+// 转办末跳文案 tf_approvalComment 里嵌的是 actor 雪花 ID（引擎按审计真相存 id）⇒
+// 展示层借宿主 getUsersByIds 折成姓名（JfUserPicker chips 回显同族）；解析不到保留 ID。
+watch(() => props.records, async (rows) => {
+  const getUsersByIds = ctx?.adapters?.getUsersByIds
+  if (!getUsersByIds) return
+  const ids = Array.from(new Set((rows || []).flatMap((r) => actorIdTokens(commentRaw(r)))))
+  if (!ids.length) return
+  try {
+    const users = await getUsersByIds(ids)
+    const map: Record<string, string> = {}
+    for (const u of users) if (u?.userId && u?.realName) map[u.userId] = u.realName
+    nameMap.value = map
+  } catch { /* 回显失败仍显示 userId，不吞信息 */ }
+}, { immediate: true, deep: true })
 
 function operatorOf(r: ApprovalRecordRow): string {
   return (r.ext?.u_realName || r.operator || '-') as string
@@ -69,9 +91,15 @@ function submitOf(r: ApprovalRecordRow): number | string | null | undefined {
   return r.ext?.submitType
 }
 
-function commentOf(r: ApprovalRecordRow): string {
+function commentRaw(r: ApprovalRecordRow): string {
   const v = r.ext?.tf_approvalComment
-  return v != null && v !== '' ? String(v) : '-'
+  return v != null && v !== '' ? String(v) : ''
+}
+
+function commentOf(r: ApprovalRecordRow): string {
+  const raw = commentRaw(r)
+  if (!raw) return '-'
+  return resolveActorIdTokens(raw, (id) => nameMap.value[id] || id)
 }
 
 function submitBadge(r: ApprovalRecordRow): 'doing' | 'done' | 'reject' | 'info' {
