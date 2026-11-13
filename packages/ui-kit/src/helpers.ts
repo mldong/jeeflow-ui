@@ -355,15 +355,22 @@ export function aidantHistoryOf(source: any): Array<Record<string, any>> {
 }
 
 /** 协办账本一行的展示文案：`第 N 轮协办给 X、Y`（与 addSignHistoryLabel 同族写死）；
- *  清场那条（`abandoned:true`）动作相反，同形渲染会读成"主办协办了两次"（与 vben aidantLine 同判据） */
-export function aidantHistoryLabel(entry: Record<string, any>): string {
+ *  清场那条（`abandoned:true`）动作相反，同形渲染会读成"主办协办了两次"（与 vben aidantLine 同判据），
+ *  但被作废的仍是那一轮那几个人 ⇒ `toActors` 照旧带出来，谁被清场要看得见。
+ *  `toActors` 引擎按审计真相存用户 ID，姓名由宿主传 `nameOf` 在展示层折，不传则原样出 ID。 */
+export function aidantHistoryLabel(
+  entry: Record<string, any>,
+  nameOf?: (id: string) => string,
+): string {
   const abandoned = entry.abandoned === true || String(entry.abandoned) === 'true'
   const round = entry.round != null ? `第${entry.round}轮` : '协办'
-  if (abandoned) return `${round}协办已作废（离开节点时未办结）`
-  const toActors = Array.isArray(entry.toActors)
-    ? entry.toActors.join('、')
-    : String(entry.toActors ?? '').split(',').filter(Boolean).join('、')
-  return `${round}协办给${toActors || '-'}`
+  const raw = Array.isArray(entry.toActors)
+    ? entry.toActors
+    : String(entry.toActors ?? '').split(',').filter(Boolean)
+  const actors = raw.map((id: any) => (nameOf ? nameOf(String(id)) : String(id))).join('、')
+  return abandoned
+    ? `${round}协办给${actors || '-'}，已作废（离开节点时未办结）`
+    : `${round}协办给${actors || '-'}`
 }
 
 /**

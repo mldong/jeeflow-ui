@@ -21,7 +21,7 @@
             </div>
             <!-- 动态协办账本（tf_aidantHistory，issues/253）：同族附加信息行，不占审批意见列 -->
             <div v-for="(h, hi) in aidantHistoryOf(r)" :key="'ad' + hi" class="jf-timeline__extra">
-              {{ aidantHistoryLabel(h) }}<span v-if="h.time"> · {{ h.time }}</span>
+              {{ aidantHistoryLabel(h, nameOf) }}<span v-if="h.time"> · {{ h.time }}</span>
             </div>
           </div>
         </li>
@@ -76,6 +76,8 @@ watch(() => props.records, async (rows) => {
   const ids = Array.from(
     new Set([
       ...(rows || []).flatMap((r) => actorIdTokens(commentRaw(r))),
+      // 协办账本 toActors 存的是用户 ID（作废轮同样带着被清场的那几个人）⇒ 一并送去折名
+      ...(rows || []).flatMap((r) => aidantHistoryOf(r).flatMap(aidantActorIds)),
       // 作废协办子行只有裸 operator 可读 ⇒ 一并送去折名，解析不到仍退回 ID
       ...(rows || []).filter(abandonedAidantRow).map((r) => String(r.operator ?? '')),
     ].filter(Boolean)),
@@ -90,9 +92,19 @@ watch(() => props.records, async (rows) => {
 }, { immediate: true, deep: true })
 
 /** 协办子行随主办离开节点被作废（taskType=1 且 taskState=99）：引擎不给这类行投 u_realName／submitType，
- *  原样渲染就是一条空白项。owner 拍定**保留这一行**（作废是事实，不隐藏），只在展示层补一句实话。 */
+ *  且 operator 恒空（没人办过），原样渲染就是一条空白项。owner 拍定**保留这一行**（作废是事实，不隐藏），
+ *  只在展示层补一句实话；被征询的人由同节点账本条目的 toActors 出证（approvalRecord 投影不投 actor 列表，
+ *  所以这一行的处理人列留空位，vben5 走 detail.tasks 时能就地折名——两处数据面不同，不是文案不同）。 */
 function abandonedAidantRow(r: ApprovalRecordRow): boolean {
   return Number(r.taskType) === 1 && String(r.taskState ?? '') === '99'
+}
+
+/** 协办账本条目里的 actor ID 列表（数组或逗号串两形都吃），供批量折名 */
+function aidantActorIds(entry: Record<string, any>): string[] {
+  const raw = Array.isArray(entry.toActors)
+    ? entry.toActors
+    : String(entry.toActors ?? '').split(',').filter(Boolean)
+  return raw.map((id: any) => String(id)).filter(Boolean)
 }
 
 function nameOf(id: string | null | undefined): string {
